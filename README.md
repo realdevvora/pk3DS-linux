@@ -56,7 +56,7 @@ This fork separates pk3DS's file tooling from the Windows UI so it can run on ma
 | `romfs extract <romfs.bin> <outDir>` / `romfs build <inDir> <out.bin>` | Unpack or build a RomFS image |
 | `exefs unpack <exefs.bin> <outDir>` / `exefs pack <out.bin> <file>...` | Unpack or pack an ExeFS image |
 | `garc unpack <file.garc> <outDir>` / `garc pack <inDir> <out.garc> --version 4\|6` | Unpack or pack a GARC archive (version 4 for X/Y and ORAS, 6 for Sun/Moon and later) |
-| `mini unpack <file> <outDir>` / `mini pack <inDir> <out> --ident XX` | Unpack or pack a mini container (numbered `0000.bin`, ... files) |
+| `mini unpack <file> <outDir>` / `mini pack <inDir> <out> --ident XX [--header-size N]` | Unpack or pack a mini container (numbered `0000.bin`, ... files). `unpack` prints the identifier and header size; pass the size back to `pack` to rebuild containers with a padded header exactly |
 | `game info (--dir <dir> \| --romfs <dir> --exefs <dir>)` | Detect the game in an extracted RomFS/ExeFS and print its version and limits |
 | `text dump <outDir>` / `text import <inDir>` (with the same game options) | Write each game text file to `NNNN.txt`, one string per line, and write edited files back into the game text archive |
 | `blz decode\|encode <file>...` | Bottom-LZ (de)compression in place |

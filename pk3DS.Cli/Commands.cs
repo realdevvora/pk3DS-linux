@@ -103,20 +103,28 @@ public static class Commands
                 Directory.CreateDirectory(outDir);
                 for (int i = 0; i < files.Length; i++)
                     File.WriteAllBytes(Path.Combine(outDir, $"{i:D4}.bin"), files[i]);
-                Console.WriteLine($"{ident} {files.Length} files");
+                Console.WriteLine($"{ident} {files.Length} files header={BitConverter.ToInt32(data, 4)}");
                 return true;
             }),
 
-        new("mini", "pack", "<inDir> <out> --ident <XX>", "Pack the files of a folder (in name order) into a mini container",
-            ["ident"], a =>
+        new("mini", "pack", "<inDir> <out> --ident <XX> [--header-size <bytes>]", "Pack the files of a folder (in name order) into a mini container; pass the header size printed by 'mini unpack' to rebuild containers with a padded header",
+            ["ident", "header-size"], a =>
             {
                 var (inDir, outFile) = Two(a);
-                a.RejectUnknown("ident");
+                a.RejectUnknown("ident", "header-size");
                 string ident = a.Require("ident");
                 if (ident.Length != 2 || ident.Any(c => c > 0x7F))
                     throw new UsageException("--ident must be two ASCII characters.");
                 byte[][] files = [.. Directory.GetFiles(inDir).OrderBy(f => Path.GetFileName(f), StringComparer.Ordinal).Select(File.ReadAllBytes)];
-                File.WriteAllBytes(outFile, Mini.PackMini(files, ident));
+                byte[] packed = Mini.PackMini(files, ident);
+                if (a.Get("header-size") is { } h)
+                {
+                    if (!int.TryParse(h, out int headerSize) || headerSize < 8 + (4 * files.Length) || headerSize % 4 != 0)
+                        throw new UsageException($"Invalid header size '{h}'; it must be a multiple of 4 and at least {8 + (4 * files.Length)}.");
+                    if (headerSize != 8 + (4 * files.Length))
+                        packed = Mini.AdjustMiniHeader(packed, headerSize);
+                }
+                File.WriteAllBytes(outFile, packed);
                 Console.WriteLine($"{files.Length} files");
                 return true;
             }),
