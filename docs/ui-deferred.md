@@ -29,7 +29,7 @@ Only 3 of the 62 hand-written WinForms files are free of UI references (`Legalit
 
 ## 3. Cross-platform image layer
 
-Drafts are in `docs/deferred-ui/` (not compiled):
+Drafts were written but never compiled or tested, so they were removed from the tree. They remain in commit `92a953e` (for example `git show 92a953e:docs/deferred-ui/PngCodec.cs`):
 
 - `PixelImage.cs`: `Rgba` struct and a BGRA `PixelImage` (`GetPixel`, `SetPixel`, `Crop`, `Transpose` = GDI+ `Rotate90FlipX`), replacing `Bitmap` / `Color`.
 - `PngCodec.cs`: dependency-free PNG encode/decode (8-bit RGBA out; gray, RGB, palette, gray+alpha, RGBA in).
