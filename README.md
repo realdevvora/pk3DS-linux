@@ -47,7 +47,7 @@ Below are some images of how the editor should look when you run it.
 This fork separates pk3DS's file tooling from the Windows UI so it can run on macOS and Linux:
 
 - **`pk3DS.Core`** is a plain `net10.0` class library with no Windows dependency. Long-running operations report through an `IProgressSink` instead of WinForms `ProgressBar` / `RichTextBox` controls, and `null` is accepted. The image code that needs `System.Drawing` is excluded from the build for now.
-- **`pk3DS.Cli`** builds the `pk3ds` command, with one command per operation:
+- **`pk3DS.Cli`** builds the `pk3ds` command. It currently covers the game container, archive, compression and hashing operations; the data-editing code (text, personal data, randomizers and so on) is not exposed yet:
 
 | Command | What it does |
 |---|---|
@@ -55,6 +55,7 @@ This fork separates pk3DS's file tooling from the Windows UI so it can run on ma
 | `ncch extract <game.cxi> <outDir>` | Same, from a decrypted CXI |
 | `romfs extract <romfs.bin> <outDir>` / `romfs build <inDir> <out.bin>` | Unpack or build a RomFS image |
 | `exefs unpack <exefs.bin> <outDir>` / `exefs pack <out.bin> <file>...` | Unpack or pack an ExeFS image |
+| `garc unpack <file.garc> <outDir>` / `garc pack <inDir> <out.garc> --version 4\|6` | Unpack or pack a GARC archive (version 4 for X/Y and ORAS, 6 for Sun/Moon and later) |
 | `blz decode\|encode <file>...` | Bottom-LZ (de)compression in place |
 | `lzss compress\|decompress <in> <out>` | LZSS (de)compression |
 | `cro hash <crr> <croDir>` | Recompute CRO hashes and update the CRR |
@@ -67,7 +68,7 @@ dotnet run --project pk3DS.Cli -- ncch extract game.cxi out
 dotnet run --project pk3DS.Cli -- romfs build out/romfs romfs.bin
 ```
 
-Fixes made while testing against a real Omega Ruby dump: rebuilt RomFS and ExeFS images now match the original byte for byte, because files are added in a fixed sorted order (filesystem order differs between operating systems); `rom build` no longer deletes the RomFS file you pass in; `ncsd extract` no longer writes a temporary file ten times too large; re-extracting no longer doubles files; and the ExeFS header hash is computed over the correct 0x200 bytes.
+Fixes made while testing against a real Omega Ruby dump: rebuilt RomFS and ExeFS images now match the original byte for byte, because files are added in a fixed sorted order (filesystem order differs between operating systems); `rom build` no longer deletes the RomFS file you pass in; `ncsd extract` no longer writes a temporary file ten times too large; re-extracting no longer doubles files; the ExeFS header hash is computed over the correct 0x200 bytes; and `garc pack` no longer deletes your `dec_*` input files or writes vectors that claim files a folder entry does not have. Every GARC in the Omega Ruby RomFS (298) unpacks and repacks byte for byte.
 
 `pk3DS.WinForms` is still in the repository, untouched, but it is not part of the solution and no longer builds against Core. What was left out on purpose, and the remaining known issues, are listed in [docs/ui-deferred.md](docs/ui-deferred.md).
 

@@ -60,6 +60,35 @@ public static class Commands
                 return ExeFS.PackExeFS(args[1..], args[0]);
             }),
 
+        new("garc", "unpack", "<file.garc> <outDir> [--no-decompress]", "Unpack a GARC archive to numbered files (LZSS-compressed entries are written as dec_*.bin)",
+            NoOptions, a =>
+            {
+                var (garc, outDir) = Two(a);
+                a.RejectUnknown("no-decompress");
+                int count = GARC.GarcUnpack(garc, outDir, a.Has("no-decompress"), new ConsoleProgressSink());
+                Console.WriteLine($"{count} files");
+                return true;
+            }),
+
+        new("garc", "pack", "<inDir> <out.garc> --version <4|6> [--padding <bytes>]", "Pack numbered files into a GARC (version 4 for X/Y and ORAS, 6 for Sun/Moon and later)",
+            ["version", "padding"], a =>
+            {
+                var (inDir, garc) = Two(a);
+                a.RejectUnknown("version", "padding");
+                int version = a.Require("version") switch
+                {
+                    "4" => GARC.VER_4,
+                    "6" => GARC.VER_6,
+                    var v => throw new UsageException($"Unknown GARC version '{v}'; use 4 or 6."),
+                };
+                int padding = 4;
+                if (a.Get("padding") is { } p && (!int.TryParse(p, out padding) || padding < 1))
+                    throw new UsageException($"Invalid padding '{p}'.");
+                int count = GARC.PackGARC(inDir, garc, version, padding, new ConsoleProgressSink());
+                Console.WriteLine($"{count} files");
+                return true;
+            }),
+
         new("blz", "decode", "<file>...", "Decompress bottom-LZ files in place",
             NoOptions, a => Blz(a, "-d")),
 

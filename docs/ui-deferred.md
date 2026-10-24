@@ -50,6 +50,8 @@ Remaining work:
 - `Stream.Read` return values are ignored in several places (`CA2022` warnings in `RomFS`, `NCSD`, `LZSS`, `SARC`, `CTR`).
 - `RomFS` keeps `ROOT_DIR` / `OutFile` as statics and writes `tempRomFS.bin`, `romfs.bin` and `exefs.bin` to the current directory, so builds are not reentrant and depend on the working directory.
 - `BLZCoder` and a few others write to `Console` directly instead of the sink.
+- `GARC` used static events (`FileCountDetermined`, `PackProgressed`, `UnpackProgressed`) for progress; they are replaced by `IProgressSink` parameters, so `pk3DS.WinForms/GarcUtil.cs` needs the same adapter as the other call sites.
+- Not yet exposed by the CLI: `Mini`, `SARC`, `DARC`, `ALYT`, `Exheader` info, `TextFile`/`TextData`, the personal/learnset/egg-move structures, the randomizers and `GameConfig`. Most of the editor logic still lives inside the WinForms forms.
 - Fixed after testing against a real Omega Ruby CXI: `NCSD.ExtractCXIfromNCSD` wrote a temp CXI 10x too large; `RomFS.isTempFile` was always true so `rom build` deleted the caller's RomFS file; extraction used `FileMode.Append`, so re-extracting into an existing folder doubled the files.
 - `NCSD.ExtractCXIfromNCSD` still hardcodes the first partition offset to `0x4000` instead of reading it from the header.
 - `rom build` output uses fixed-crypto (zero key) encryption, so `ncsd extract` cannot read a `.3ds` that pk3DS itself built.
