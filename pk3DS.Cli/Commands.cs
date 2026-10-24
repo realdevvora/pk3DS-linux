@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Text;
 using pk3DS.Core;
 using pk3DS.Core.CTR;
 
@@ -11,6 +13,8 @@ namespace pk3DS.Cli;
 public static class Commands
 {
     private static readonly string[] NoOptions = [];
+
+    private static readonly UTF8Encoding Utf8 = new(false);
 
     public static readonly Command[] All =
     [
@@ -89,6 +93,103 @@ public static class Commands
                 return true;
             }),
 
+        new("mini", "unpack", "<file> <outDir>", "Unpack a mini container to numbered files (0000.bin, ...) and print its two-letter identifier",
+            NoOptions, a =>
+            {
+                var (file, outDir) = Two(a);
+                byte[] data = File.ReadAllBytes(file);
+                string ident = MiniIdentifier(data);
+                byte[][] files = Mini.UnpackMini(data, ident) ?? throw new InvalidDataException("Not a valid mini container.");
+                Directory.CreateDirectory(outDir);
+                for (int i = 0; i < files.Length; i++)
+                    File.WriteAllBytes(Path.Combine(outDir, $"{i:D4}.bin"), files[i]);
+                Console.WriteLine($"{ident} {files.Length} files");
+                return true;
+            }),
+
+        new("mini", "pack", "<inDir> <out> --ident <XX>", "Pack the files of a folder (in name order) into a mini container",
+            ["ident"], a =>
+            {
+                var (inDir, outFile) = Two(a);
+                a.RejectUnknown("ident");
+                string ident = a.Require("ident");
+                if (ident.Length != 2 || ident.Any(c => c > 0x7F))
+                    throw new UsageException("--ident must be two ASCII characters.");
+                byte[][] files = [.. Directory.GetFiles(inDir).OrderBy(f => Path.GetFileName(f), StringComparer.Ordinal).Select(File.ReadAllBytes)];
+                File.WriteAllBytes(outFile, Mini.PackMini(files, ident));
+                Console.WriteLine($"{files.Length} files");
+                return true;
+            }),
+
+        new("game", "info", GameOptions.Synopsis, "Detect the game in an extracted RomFS/ExeFS and print its basic data",
+            GameOptions.ValueOptions, a =>
+            {
+                a.Expect(0);
+                a.RejectUnknown(GameOptions.ValueOptions);
+                var config = GameOptions.Load(a);
+                Console.WriteLine($"version {config.Version}");
+                Console.WriteLine($"generation {config.Generation}");
+                Console.WriteLine($"language {config.Language}");
+                Console.WriteLine($"species {config.Info.MaxSpeciesID}");
+                Console.WriteLine($"moves {config.Info.MaxMoveID}");
+                Console.WriteLine($"items {config.Info.MaxItemID}");
+                Console.WriteLine($"abilities {config.Info.MaxAbilityID}");
+                Console.WriteLine($"text files {config.GameTextStrings.Length}");
+                return true;
+            }),
+
+        new("text", "dump", $"{GameOptions.Synopsis} <outDir>", "Write each game text file to <outDir>/NNNN.txt, one line per string",
+            GameOptions.ValueOptions, a =>
+            {
+                string[] args = a.Expect(1);
+                a.RejectUnknown(GameOptions.ValueOptions);
+                var config = GameOptions.Load(a);
+                Directory.CreateDirectory(args[0]);
+                for (int i = 0; i < config.GameTextStrings.Length; i++)
+                {
+                    string text = string.Concat(config.GameTextStrings[i].Select(line => line + "\n"));
+                    File.WriteAllText(Path.Combine(args[0], $"{i:D4}.txt"), text, Utf8);
+                }
+                Console.WriteLine($"{config.GameTextStrings.Length} files");
+                return true;
+            }),
+
+        new("text", "import", $"{GameOptions.Synopsis} <inDir>", "Write NNNN.txt files from <inDir> back into the game text archive",
+            GameOptions.ValueOptions, a =>
+            {
+                string[] args = a.Expect(1);
+                a.RejectUnknown(GameOptions.ValueOptions);
+                var config = GameOptions.Load(a);
+                byte[][] files = config.GARCGameText.Files;
+                int changed = 0;
+                foreach (string path in Directory.GetFiles(args[0], "*.txt"))
+                {
+                    if (!int.TryParse(Path.GetFileNameWithoutExtension(path), out int index) || index < 0 || index >= files.Length)
+                        throw new InvalidDataException($"'{Path.GetFileName(path)}' is not a text file number between 0 and {files.Length - 1}.");
+                    string text = File.ReadAllText(path, Utf8);
+                    string[] lines = text.Length == 0 ? [] : text.EndsWith('\n') ? text[..^1].Split('\n') : throw new InvalidDataException($"'{Path.GetFileName(path)}' must end with a newline.");
+                    // Skip files whose text is unchanged so their original bytes stay as they are.
+                    if (lines.SequenceEqual(config.GameTextStrings[index]))
+                        continue;
+                    try
+                    {
+                        files[index] = TextFile.GetBytes(config, lines, config.RemapCharacters);
+                    }
+                    catch (Exception e)
+                    {
+                        throw new InvalidDataException($"{Path.GetFileName(path)}: {e.Message}", e);
+                    }
+                    changed++;
+                }
+                if (changed > 0)
+                {
+                    config.GARCGameText.Files = files;
+                    config.GARCGameText.Save();
+                }
+                Console.WriteLine($"{changed} files changed");
+                return true;
+            }),
+
         new("blz", "decode", "<file>...", "Decompress bottom-LZ files in place",
             NoOptions, a => Blz(a, "-d")),
 
@@ -155,6 +256,13 @@ public static class Commands
         }
         _ = new BLZCoder([mode, .. files]);
         return true;
+    }
+
+    private static string MiniIdentifier(byte[] data)
+    {
+        if (data.Length < 4 || data[0] is < 0x20 or > 0x7E || data[1] is < 0x20 or > 0x7E)
+            throw new InvalidDataException("Not a valid mini container.");
+        return new string([(char)data[0], (char)data[1]]);
     }
 
     private static bool IsLogo(string name) =>
