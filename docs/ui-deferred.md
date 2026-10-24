@@ -45,11 +45,15 @@ Remaining work:
 
 **Unverified:** the ETC1 decoder was written from the ETC1 spec and the 3DS block layout, not compared against the old DLL. The DLL's output layout (row-major vs column-major, any Y flip) is inferred from how `ImageUtil.DecodeETC` indexes it. Verify against a real `.bclim` / `.bflim` before relying on it.
 
-## 4. Backend issues found while building the CLI (not UI, not yet fixed)
+## 4. Backend issues still open
 
-- `Stream.Read` return values are ignored in several places (`CA2022` warnings in `RomFS`, `NCSD`, `LZSS`, `SARC`, `CTR`).
-- `RomFS` keeps `ROOT_DIR` / `OutFile` as statics and writes `tempRomFS.bin`, `romfs.bin` and `exefs.bin` to the current directory, so builds are not reentrant and depend on the working directory.
-- `BLZCoder` and a few others write to `Console` directly instead of the sink.
-- `GARC` used static events (`FileCountDetermined`, `PackProgressed`, `UnpackProgressed`) for progress; they are replaced by `IProgressSink` parameters, so `pk3DS.WinForms/GarcUtil.cs` needs the same adapter as the other call sites.
+What was fixed is listed in [differences-from-upstream.md](differences-from-upstream.md). Still open:
+
+- `RomFS` keeps `ROOT_DIR` / `OutFile` as statics and writes `tempRomFS.bin` and `romfs.bin` to the current directory while building, so builds are not reentrant and depend on the working directory.
+- `BLZCoder` (19 calls), `FileFormat`, `GameBackup` and a few others write to `Console` directly instead of the progress sink.
+- One unchecked `Stream.Read` remains in `RomFS.MakeRomFSData`; it fills a buffer that is never used.
+- `pk3DS.WinForms/GarcUtil.cs` still uses the removed static GARC events, and every other WinForms call site still passes `ProgressBar` / `RichTextBox`; they need an `IProgressSink` adapter.
+- `NCSD.ExtractCXIfromNCSD` hardcodes the first partition offset to `0x4000` instead of reading it from the header.
+- `rom build` output uses fixed-crypto (zero key) encryption, so `ncsd extract` cannot read a `.3ds` that pk3DS itself built.
 - Not yet exposed by the CLI: `SARC`, `DARC`, `ALYT`, `Exheader` info, the personal/learnset/egg-move/evolution/move structures, static and wild encounters, the randomizers and trainer, item and shop data. Most of the editor logic still lives inside the WinForms forms.
 - The text writer (`TextFile`) does not reproduce the original bytes: it always terminates and pads each line, writes the line-table flag word as 0 (the original has non-zero values such as `4` on some lines), and trims each line. The decoded text round-trips exactly (160 of the 172 files in a test edit; the other 12 only lost a leading space), but whether the flag word matters in game is unverified. `text import` therefore leaves unchanged files alone.
