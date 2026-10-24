@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -10,29 +11,24 @@ public static class GARC
     public const ushort VER_6 = 0x0600;
     public const ushort VER_4 = 0x0400;
 
-    public class FileCountDeterminedEventArgs : EventArgs
+    public static int PackGARC(string folderPath, string garcPath, int version, int bytesPadding, IProgressSink progress = null)
     {
-        public int Total { get; set; }
+        List<string> tempFiles = [];
+        try
+        {
+            return PackGARC(folderPath, garcPath, version, bytesPadding, progress, tempFiles);
+        }
+        finally
+        {
+            foreach (string f in tempFiles)
+            {
+                try { File.Delete(f); }
+                catch { }
+            }
+        }
     }
 
-    public class PackProgressedEventArgs : EventArgs
-    {
-        public int Current { get; set; }
-        public int Total { get; set; }
-        public string CurrentFile { get; set; }
-    }
-
-    public class UnpackProgressedEventArgs : EventArgs
-    {
-        public int Current { get; set; }
-        public int Total { get; set; }
-    }
-
-    public static event EventHandler<FileCountDeterminedEventArgs> FileCountDetermined;
-    public static event EventHandler<PackProgressedEventArgs> PackProgressed;
-    public static event EventHandler<UnpackProgressedEventArgs> UnpackProgressed;
-
-    public static int PackGARC(string folderPath, string garcPath, int version, int bytesPadding)
+    private static int PackGARC(string folderPath, string garcPath, int version, int bytesPadding, IProgressSink progress, List<string> tempFiles)
     {
         // Check to see if our input folder exists.
         if (!new DirectoryInfo(folderPath).Exists) throw new DirectoryNotFoundException("Folder does not exist");
@@ -69,8 +65,11 @@ public static class GARC
         }
         catch (Exception e) { throw new Exception("Invalid packing filenames", e); }
 
-        FileCountDetermined?.Invoke(null, new FileCountDeterminedEventArgs { Total = filectr });
+        progress?.Reset(filectr);
         #endregion            
+
+        // The files that make up each entry, in the order they are written.
+        var entryFiles = new string[packOrder.Length][];
 
         // Set Up the GARC template.
         var garc = new GARCFile
@@ -120,18 +119,14 @@ public static class GARC
                         ? int.Parse(fn)
                         : int.Parse(fn[(compressed + 4)..]);
 
-                    if (compressed >= 0)
-                    {
-                        string old = packOrder[i];
-                        LZSS.Compress(packOrder[i], packOrder[i] = Path.Combine(Path.GetDirectoryName(packOrder[i]), fileNumber.ToString()));
-                        File.Delete(old);
-                    }
+                    string source = compressed >= 0 ? CompressToTemp(packOrder[i], tempFiles) : packOrder[i];
+                    entryFiles[i] = [source];
 
                     // Assemble Vector
                     v = 1;
 
                     // Assemble Entry
-                    var fi = new FileInfo(packOrder[i]);
+                    var fi = new FileInfo(source);
                     int actualLength = (int)(fi.Length % 4 == 0 ? fi.Length : fi.Length + 4 - (fi.Length % 4));
                     garc.fatb.Entries[i].SubEntries[0].Start = od;
                     garc.fatb.Entries[i].SubEntries[0].End = actualLength + garc.fatb.Entries[i].SubEntries[0].Start;
@@ -141,12 +136,15 @@ public static class GARC
                     op += 12;
 
                     // Step
-                    PackProgressed?.Invoke(null, new PackProgressedEventArgs { Current = index++, Total = filectr, CurrentFile = packOrder[i] });
+                    progress?.Step();
+                    progress?.Log($"Packing {++index}/{filectr} - {packOrder[i]}");
                 }
                 else
                 {
                     garc.fatb.Entries[i].IsFolder = true;
-                    string[] subFiles = Directory.GetFiles(packOrder[i]);
+                    v = 0; // the vector must only describe this folder's files
+                    string[] subFiles = GetFilesByNumber(packOrder[i]);
+                    var sources = new List<string>();
                     foreach (string f in subFiles)
                     {
                         string s = f;
@@ -158,10 +156,8 @@ public static class GARC
                         garc.fatb.Entries[i].SubEntries[fileNumber].Exists = true;
 
                         if (compressed >= 0)
-                        {
-                            LZSS.Compress(f, s = Path.Combine(Path.GetDirectoryName(f), fileNumber.ToString()));
-                            File.Delete(f);
-                        }
+                            s = CompressToTemp(f, tempFiles);
+                        sources.Add(s);
 
                         // Assemble Vector
                         v |= 1 << fileNumber;
@@ -177,8 +173,10 @@ public static class GARC
                         op += 12;
 
                         // Step
-                        PackProgressed?.Invoke(null, new PackProgressedEventArgs { Current = index++, Total = filectr, CurrentFile = packOrder[i] });
+                        progress?.Step();
+                        progress?.Log($"Packing {++index}/{filectr} - {packOrder[i]}");
                     }
+                    entryFiles[i] = [.. sources];
                 }
                 garc.fatb.Entries[i].Vector = (uint)v;
             }
@@ -262,9 +260,8 @@ public static class GARC
 
         long largestSize = 0; // Required memory to allocate to handle the largest file
         long largestPadded = 0; // Required memory to allocate to handle the largest PADDED file (Ver6 only)
-        foreach (string e in packOrder)
+        foreach (string[] fa in entryFiles)
         {
-            string[] fa = Directory.Exists(e) ? Directory.GetFiles(e) : [e];
             foreach (string f in fa)
             {
                 // Update largest file length if necessary
@@ -313,7 +310,7 @@ public static class GARC
         return filectr;
     }
 
-    public static int GarcUnpack(string garcPath, string outPath, bool skipDecompression)
+    public static int GarcUnpack(string garcPath, string outPath, bool skipDecompression, IProgressSink progress = null)
     {
         if (!File.Exists(garcPath)) throw new FileNotFoundException("File does not exist");
 
@@ -325,7 +322,7 @@ public static class GARC
         if (outPath == "gametext")
             format = "D3";
 
-        FileCountDetermined?.Invoke(null, new FileCountDeterminedEventArgs { Total = fileCount });
+        progress?.Reset(fileCount);
 
         using var br = new BinaryReader(File.OpenRead(garcPath));
         // Create Extraction folder if it does not exist.
@@ -365,7 +362,7 @@ public static class GARC
 
                 // Write File
                 string fileOut = Path.Combine(parentFolder, (Entry.IsFolder ? i.ToString("00") : fileName) + "." + ext);
-                using (var bw = new BinaryWriter(File.OpenWrite(fileOut)))
+                using (var bw = new BinaryWriter(File.Create(fileOut)))
                 {
                     // Write out the data for the file
                     br.BaseStream.Position = SubEntry.Start + garc.DataOffset;
@@ -390,13 +387,34 @@ public static class GARC
                 }
                 #endregion
 
-                UnpackProgressed?.Invoke(null, new UnpackProgressedEventArgs { Current = filectr, Total = fileCount });
+                progress?.Step();
 
                 if ((vector >>= 1) == 0) break;
             }
         }
 
         return fileCount;
+    }
+
+    private static string CompressToTemp(string source, List<string> tempFiles)
+    {
+        string temp = Path.Combine(Path.GetTempPath(), "pk3ds_" + Guid.NewGuid().ToString("N"));
+        tempFiles.Add(temp);
+        LZSS.Compress(source, temp);
+        return temp;
+    }
+
+    /// <summary>
+    /// Files of a GARC entry folder in file-number order; the OS enumeration order is not stable.
+    /// </summary>
+    private static string[] GetFilesByNumber(string folder)
+    {
+        return [.. Directory.GetFiles(folder).OrderBy(f =>
+        {
+            string fn = Path.GetFileNameWithoutExtension(f);
+            int compressed = fn.IndexOf("dec_", StringComparison.Ordinal);
+            return compressed < 0 ? int.Parse(fn) : int.Parse(fn[(compressed + 4)..]);
+        })];
     }
 
     public static GARCFile UnpackGARC(string path)

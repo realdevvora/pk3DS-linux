@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Windows.Forms;
 
 namespace pk3DS.Core.CTR;
 
@@ -134,12 +133,12 @@ public class NCSD
         return header;
     }
 
-    public void ExtractFilesFromNCSD(string NCSD_PATH, string outputDirectory, RichTextBox TB_Progress = null, ProgressBar PB_Show = null)
+    public void ExtractFilesFromNCSD(string NCSD_PATH, string outputDirectory, IProgressSink progress = null)
     {
         if (!Directory.Exists(outputDirectory))
             Directory.CreateDirectory(outputDirectory);
 
-        UpdateTB(TB_Progress, "Extracting game data (CXI) from .3DS file...");
+        progress?.Log("Extracting game data (CXI) from .3DS file...");
         byte[] headerBytes = new byte[0x200];
         using (var fs = new FileStream(NCSD_PATH, FileMode.Open, FileAccess.Read))
         {
@@ -147,35 +146,31 @@ public class NCSD
         }
 
         Header = CreateHeaderFromBytes(headerBytes);
-        string ncchPath = ExtractCXIfromNCSD(NCSD_PATH, outputDirectory, Header.OffsetSizeTable[0].Size, PB_Show);
-        UpdateTB(TB_Progress, "CXI extracted, extracting files from CXI...");
+        string ncchPath = ExtractCXIfromNCSD(NCSD_PATH, outputDirectory, Header.OffsetSizeTable[0].Size, progress);
+        progress?.Log("CXI extracted, extracting files from CXI...");
         var ncch = new NCCH();
-        ncch.ExtractNCCHFromFile(ncchPath, outputDirectory, TB_Progress, PB_Show);
+        ncch.ExtractNCCHFromFile(ncchPath, outputDirectory, progress);
         File.Delete(ncchPath);
     }
 
-    private static string ExtractCXIfromNCSD(string NCSD_PATH, string outputDirectory, uint ncchSize, ProgressBar PB_Show = null)
+    private static string ExtractCXIfromNCSD(string NCSD_PATH, string outputDirectory, uint ncchSize, IProgressSink progress = null)
     {
         byte[] buffer = new byte[MEDIA_UNIT_SIZE * 10];
         string outputFile = Path.Combine(outputDirectory, "game.cxi");
-        if (PB_Show.InvokeRequired)
-        {
-            PB_Show.Invoke((MethodInvoker)delegate { PB_Show.Minimum = 0; PB_Show.Step = 1; PB_Show.Value = 0; PB_Show.Maximum = Convert.ToInt32(ncchSize); });
-        }
-        else { PB_Show.Minimum = 0; PB_Show.Step = 1; PB_Show.Value = 0; PB_Show.Maximum = Convert.ToInt32(ncchSize); }
+        progress?.Reset((int)((((long)ncchSize * (long)MEDIA_UNIT_SIZE) + buffer.Length - 1) / buffer.Length));
 
         using FileStream inputFileStream = new(NCSD_PATH, FileMode.Open, FileAccess.Read),
-            outputFileStream = new(outputFile, FileMode.Append, FileAccess.Write);
+            outputFileStream = new(outputFile, FileMode.Create, FileAccess.Write);
         inputFileStream.Seek(0x4000, SeekOrigin.Begin);
-        for (int i = 0; i < ncchSize; i++)
+        long remaining = (long)(ncchSize * MEDIA_UNIT_SIZE);
+        while (remaining > 0)
         {
-            inputFileStream.Read(buffer, 0, buffer.Length);
-            outputFileStream.Write(buffer, 0, buffer.Length);
-            if (PB_Show.InvokeRequired)
-            {
-                PB_Show.Invoke((MethodInvoker)PB_Show.PerformStep);
-            }
-            else { PB_Show.PerformStep(); }
+            int count = inputFileStream.Read(buffer, 0, (int)Math.Min(buffer.Length, remaining));
+            if (count == 0)
+                throw new EndOfStreamException("NCSD file ended before the first partition was complete.");
+            outputFileStream.Write(buffer, 0, count);
+            remaining -= count;
+            progress?.Step();
         }
 
         return outputFile;
@@ -191,26 +186,4 @@ public class NCSD
         return output;
     }
 
-    internal static void UpdateTB(RichTextBox RTB, string progress)
-    {
-        try
-        {
-            if (RTB.InvokeRequired)
-            {
-                RTB.Invoke((MethodInvoker)delegate
-                {
-                    RTB.AppendText(Environment.NewLine + progress);
-                    RTB.SelectionStart = RTB.Text.Length;
-                    RTB.ScrollToCaret();
-                });
-            }
-            else
-            {
-                RTB.SelectionStart = RTB.Text.Length;
-                RTB.ScrollToCaret();
-                RTB.AppendText(progress + Environment.NewLine);
-            }
-        }
-        catch { }
-    }
 }

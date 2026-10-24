@@ -230,3 +230,13 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 /.vs
+
+# pk3ds CLI scratch output and game files
+tempRomFS.bin
+romfs.bin
+exefs.bin
+blz.bin
+*.3ds
+*.cxi
+*.cia
+roms/

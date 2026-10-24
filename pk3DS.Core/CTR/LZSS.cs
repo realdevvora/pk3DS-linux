@@ -9,7 +9,7 @@ public static class LZSS
     public static long Decompress(string infile, string outfile)
     {
         // make sure the output directory exists
-        string outDirectory = Path.GetDirectoryName(outfile);
+        string outDirectory = Path.GetDirectoryName(Path.GetFullPath(outfile));
         if (!Directory.Exists(outDirectory))
             Directory.CreateDirectory(outDirectory);
         // open the two given files, and delegate to the format-specific code.
@@ -244,7 +244,7 @@ public static class LZSS
     public static int Compress(string infile, string outfile)
     {
         // make sure the output directory exists
-        string outDirectory = Path.GetDirectoryName(outfile);
+        string outDirectory = Path.GetDirectoryName(Path.GetFullPath(outfile));
         if (!Directory.Exists(outDirectory))
             Directory.CreateDirectory(outDirectory);
         // open the proper Streams, and delegate to the format-specific code.

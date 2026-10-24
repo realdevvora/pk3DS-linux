@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
-using System.Windows.Forms;
 
 namespace pk3DS.Core.CTR;
 
@@ -15,10 +14,10 @@ public class RomFS
     public readonly byte[] SuperBlockHash;
     public readonly uint SuperBlockLen;
 
-    public RomFS(string fn)
+    public RomFS(string fn, bool isTempFile = false)
     {
         FileName = fn;
-        isTempFile = true;
+        this.isTempFile = isTempFile;
         using var fs = File.OpenRead(fn);
         fs.Seek(0x8, SeekOrigin.Begin);
         uint mhlen = (uint)(fs.ReadByte() | (fs.ReadByte() << 8) | (fs.ReadByte() << 16) | (fs.ReadByte() << 24));
@@ -38,30 +37,8 @@ public class RomFS
     internal static string OutFile;
     internal const uint ROMFS_UNUSED_ENTRY = 0xFFFFFFFF;
 
-    internal static void UpdateTB(RichTextBox RTB, string progress)
-    {
-        try
-        {
-            if (RTB.InvokeRequired)
-            {
-                RTB.Invoke((MethodInvoker)delegate
-                {
-                    RTB.AppendText(Environment.NewLine + progress);
-                    RTB.SelectionStart = RTB.Text.Length;
-                    RTB.ScrollToCaret();
-                });
-            }
-            else
-            {
-                RTB.SelectionStart = RTB.Text.Length;
-                RTB.ScrollToCaret();
-                RTB.AppendText(progress + Environment.NewLine);
-            }
-        }
-        catch { }
-    }
 
-    public void ExtractRomFS(string outputDirectory, RichTextBox TB_Progress = null, ProgressBar PB_Show = null)
+    public void ExtractRomFS(string outputDirectory, IProgressSink progress = null)
     {
         byte[] ivfcHeaderBytes = new byte[0x5C];
         using (var file = new FileStream(FileName, FileMode.Open, FileAccess.Read))
@@ -95,7 +72,7 @@ public class RomFS
             Directory.CreateDirectory(outputDirectory);
         }
 
-        VisitDirectory(0, outputDirectory, directoryMetadataBlock, fileMetadataBlock, infoHeader.DataOffset, TB_Progress, PB_Show);
+        VisitDirectory(0, outputDirectory, directoryMetadataBlock, fileMetadataBlock, infoHeader.DataOffset, progress);
     }
 
     private static IVFCInfo GetIVFCInfoFromBytes(byte[] headerBytes)
@@ -146,8 +123,7 @@ public class RomFS
         byte[] directoryMetadataBlock,
         byte[] fileMetadataBlock,
         ulong dataOffset,
-        RichTextBox TB_Progress = null,
-        ProgressBar PB_Show = null)
+        IProgressSink progress = null)
     {
         Romfs_DirEntry entry = GetDirEntryFromMetadataBytes(directoryMetadataBlock, Convert.ToInt32(directoryOffset));
 
@@ -156,17 +132,17 @@ public class RomFS
 
         if (entry.FileOffset != 0xFFFFFFFF)
         {
-            VisitFile(entry.FileOffset, currentPath, fileMetadataBlock, dataOffset, TB_Progress, PB_Show);
+            VisitFile(entry.FileOffset, currentPath, fileMetadataBlock, dataOffset, progress);
         }
 
         if (entry.ChildOffset != 0xFFFFFFFF)
         {
-            VisitDirectory(entry.ChildOffset, currentPath, directoryMetadataBlock, fileMetadataBlock, dataOffset, TB_Progress, PB_Show);
+            VisitDirectory(entry.ChildOffset, currentPath, directoryMetadataBlock, fileMetadataBlock, dataOffset, progress);
         }
 
         if (entry.SiblingOffset != 0xFFFFFFFF)
         {
-            VisitDirectory(entry.SiblingOffset, rootPath, directoryMetadataBlock, fileMetadataBlock, dataOffset, TB_Progress, PB_Show);
+            VisitDirectory(entry.SiblingOffset, rootPath, directoryMetadataBlock, fileMetadataBlock, dataOffset, progress);
         }
     }
 
@@ -175,17 +151,16 @@ public class RomFS
         string rootPath,
         byte[] fileMetadataBlock,
         ulong dataOffset,
-        RichTextBox TB_Progress = null,
-        ProgressBar PB_Show = null)
+        IProgressSink progress = null)
     {
         Romfs_FileEntry entry = GetFileEntryFromMetadataBytes(fileMetadataBlock, Convert.ToInt32(fileOffset));
         string currentPath = Path.Combine(rootPath, entry.Name);
-        UpdateTB_Progress($"Extracting {currentPath} from romfs", TB_Progress);
-        ExtractFileFromRomFS(entry, currentPath, dataOffset, PB_Show);
+        progress?.Log($"Extracting {currentPath} from romfs");
+        ExtractFileFromRomFS(entry, currentPath, dataOffset, progress);
 
         if (entry.SiblingOffset != 0xFFFFFFFF)
         {
-            VisitFile(entry.SiblingOffset, rootPath, fileMetadataBlock, dataOffset, TB_Progress, PB_Show);
+            VisitFile(entry.SiblingOffset, rootPath, fileMetadataBlock, dataOffset, progress);
         }
     }
 
@@ -229,21 +204,17 @@ public class RomFS
         return entry;
     }
 
-    private void ExtractFileFromRomFS(Romfs_FileEntry entry, string path, ulong dataOffset, ProgressBar PB_Show = null)
+    private void ExtractFileFromRomFS(Romfs_FileEntry entry, string path, ulong dataOffset, IProgressSink progress = null)
     {
         ulong offsetInRomFS = dataOffset + entry.DataOffset;
         byte[] buffer = new byte[0x2000];
 
         using FileStream romfsFileStream = new(FileName, FileMode.Open, FileAccess.Read),
-            outputFileStream = new(path, FileMode.Append, FileAccess.Write);
+            outputFileStream = new(path, FileMode.Create, FileAccess.Write);
         romfsFileStream.Seek(Convert.ToInt64(offsetInRomFS), SeekOrigin.Begin);
         int remainingSize = Convert.ToInt32(entry.DataSize);
         var max = remainingSize / buffer.Length;
-        if (PB_Show.InvokeRequired)
-        {
-            PB_Show.Invoke((MethodInvoker)delegate { PB_Show.Minimum = 0; PB_Show.Step = 1; PB_Show.Value = 0; PB_Show.Maximum = max; });
-        }
-        else { PB_Show.Minimum = 0; PB_Show.Step = 1; PB_Show.Value = 0; PB_Show.Maximum = max; }
+        progress?.Reset(max);
 
         while (remainingSize > 0)
         {
@@ -251,24 +222,20 @@ public class RomFS
             romfsFileStream.Read(buffer, 0, sizeToReadWrite);
             outputFileStream.Write(buffer, 0, sizeToReadWrite);
             remainingSize -= sizeToReadWrite;
-            if (PB_Show.InvokeRequired)
-            {
-                PB_Show.Invoke((MethodInvoker)PB_Show.PerformStep);
-            }
-            else { PB_Show.PerformStep(); }
+            progress?.Step();
         }
     }
 
-    public static void BuildRomFS(string infile, string outfile, RichTextBox TB_Progress = null, ProgressBar PB_Show = null)
+    public static void BuildRomFS(string infile, string outfile, IProgressSink progress = null)
     {
         OutFile = outfile;
-        ROOT_DIR = infile;
+        ROOT_DIR = Path.TrimEndingDirectorySeparator(Path.GetFullPath(infile)); // directory entries are compared by their full path
         if (File.Exists(TempFile)) File.Delete(TempFile);
 
         var FNT = new FileNameTable(ROOT_DIR);
         var RomFiles = new RomfsFile[FNT.NumFiles];
         var In = new LayoutManager.Input[FNT.NumFiles];
-        UpdateTB(TB_Progress, "Creating Layout...");
+        progress?.Log("Creating Layout...");
         for (int i = 0; i < FNT.NumFiles; i++)
         {
             In[i] = new LayoutManager.Input { FilePath = FNT.NameEntryTable[i].FullName, AlignmentSize = 0x10 };
@@ -286,9 +253,9 @@ public class RomFS
         }
 
         using var memoryStream = new MemoryStream();
-        UpdateTB(TB_Progress, "Creating RomFS MetaData...");
+        progress?.Log("Creating RomFS MetaData...");
         BuildRomFSHeader(memoryStream, RomFiles, ROOT_DIR);
-        MakeRomFSData(RomFiles, memoryStream, TB_Progress, PB_Show);
+        MakeRomFSData(RomFiles, memoryStream, progress);
     }
 
     internal static ulong Align(ulong input, ulong alignsize)
@@ -301,9 +268,9 @@ public class RomFS
         return output;
     }
 
-    internal static void MakeRomFSData(RomfsFile[] RomFiles, MemoryStream metadata, RichTextBox TB_Progress = null, ProgressBar PB_Show = null)
+    internal static void MakeRomFSData(RomfsFile[] RomFiles, MemoryStream metadata, IProgressSink progress = null)
     {
-        UpdateTB(TB_Progress, "Computing IVFC Header Data...");
+        progress?.Log("Computing IVFC Header Data...");
         var ivfc = new IVFCInfo { Levels = new IVFCLevel[3] };
         for (int i = 0; i < ivfc.Levels.Length; i++)
         {
@@ -343,12 +310,8 @@ public class RomFS
             byte[] metadataArray = metadata.ToArray();
             OutFileStream.Write(metadataArray, 0, metadataArray.Length);
             long baseOfs = OutFileStream.Position;
-            UpdateTB(TB_Progress, "Writing Level 2 Data...");
-            if (PB_Show.InvokeRequired)
-            {
-                PB_Show.Invoke((MethodInvoker)delegate { PB_Show.Minimum = 0; PB_Show.Step = 1; PB_Show.Value = 0; PB_Show.Maximum = RomFiles.Length; });
-            }
-            else { PB_Show.Minimum = 0; PB_Show.Step = 1; PB_Show.Value = 0; PB_Show.Maximum = RomFiles.Length; }
+            progress?.Log("Writing Level 2 Data...");
+            progress?.Reset(RomFiles.Length);
 
             foreach (RomfsFile t in RomFiles)
             {
@@ -362,26 +325,18 @@ public class RomFS
                         OutFileStream.Write(buffer, 0, buffer.Length);
                     }
                 }
-                if (PB_Show.InvokeRequired)
-                {
-                    PB_Show.Invoke((MethodInvoker)PB_Show.PerformStep);
-                }
-                else { PB_Show.PerformStep(); }
+                progress?.Step();
             }
             long hashBaseOfs = (long)Align((ulong)OutFileStream.Position, ivfc.Levels[2].BlockSize);
             long hOfs = (long)Align(MasterHashLen, ivfc.Levels[0].BlockSize);
             long cOfs = hashBaseOfs + (long)ivfc.Levels[1].HashOffset;
             for (int i = ivfc.Levels.Length - 1; i >= 0; i--)
             {
-                UpdateTB(TB_Progress, "Computing Level " + i + " Hashes...");
+                progress?.Log("Computing Level " + i + " Hashes...");
                 byte[] buffer = new byte[(int)ivfc.Levels[i].BlockSize];
 
                 var count = (int)(ivfc.Levels[i].DataLength / ivfc.Levels[i].BlockSize);
-                if (PB_Show.InvokeRequired)
-                {
-                    PB_Show.Invoke((MethodInvoker)delegate { PB_Show.Minimum = 0; PB_Show.Step = 1; PB_Show.Value = 0; PB_Show.Maximum = count; });
-                }
-                else { PB_Show.Minimum = 0; PB_Show.Step = 1; PB_Show.Value = 0; PB_Show.Maximum = count; }
+                progress?.Reset(count);
 
                 for (long ofs = 0; ofs < (long)ivfc.Levels[i].DataLength; ofs += ivfc.Levels[i].BlockSize)
                 {
@@ -392,11 +347,7 @@ public class RomFS
                     OutFileStream.Seek(cOfs, SeekOrigin.Begin);
                     OutFileStream.Write(hash, 0, hash.Length);
                     cOfs = OutFileStream.Position;
-                    if (PB_Show.InvokeRequired)
-                    {
-                        PB_Show.Invoke((MethodInvoker)PB_Show.PerformStep);
-                    }
-                    else { PB_Show.PerformStep(); }
+                    progress?.Step();
                 }
 
                 if (i <= 0)
@@ -438,7 +389,7 @@ public class RomFS
         File.Move(TempFile, OutFile);
     }
 
-    internal static void WriteBinary(string tempFile, string outFile, RichTextBox TB_Progress = null, ProgressBar PB_Show = null)
+    internal static void WriteBinary(string tempFile, string outFile, IProgressSink progress = null)
     {
         using var fs = new FileStream(outFile, FileMode.Create);
         using var writer = new BinaryWriter(fs);
@@ -446,11 +397,7 @@ public class RomFS
 
         const uint BUFFER_SIZE = 0x400000; // 4MB Buffer
         var steps = (int)(fileStream.Length / BUFFER_SIZE);
-        if (PB_Show.InvokeRequired)
-        {
-            PB_Show.Invoke((MethodInvoker)delegate { PB_Show.Minimum = 0; PB_Show.Step = 1; PB_Show.Value = 0; PB_Show.Maximum = steps; });
-        }
-        else { PB_Show.Minimum = 0; PB_Show.Step = 1; PB_Show.Value = 0; PB_Show.Maximum = steps; }
+        progress?.Reset(steps);
 
         byte[] buffer = new byte[BUFFER_SIZE];
         while (true)
@@ -459,11 +406,7 @@ public class RomFS
             if (count != 0)
             {
                 writer.Write(buffer, 0, count);
-                if (PB_Show.InvokeRequired)
-                {
-                    PB_Show.Invoke((MethodInvoker)PB_Show.PerformStep);
-                }
-                else { PB_Show.PerformStep(); }
+                progress?.Step();
             }
             else
             {
@@ -473,7 +416,7 @@ public class RomFS
 
         writer.Flush();
         File.Delete(TempFile);
-        UpdateTB(TB_Progress, "Wrote RomFS to path:" + Environment.NewLine + outFile);
+        progress?.Log("Wrote RomFS to path:" + Environment.NewLine + outFile);
     }
 
     internal static string ByteArrayToString(IEnumerable<byte> input)
@@ -485,20 +428,6 @@ public class RomFS
         return sb.ToString();
     }
 
-    internal static void UpdateTB_Progress(string text, RichTextBox TB_Progress = null)
-    {
-        if (TB_Progress.InvokeRequired)
-        {
-            TB_Progress.Invoke((MethodInvoker)delegate
-            {
-                TB_Progress.Text += text + Environment.NewLine;
-            });
-        }
-        else
-        {
-            TB_Progress.Text += text + Environment.NewLine;
-        }
-    }
 
     internal static void BuildRomFSHeader(MemoryStream romfs_stream, RomfsFile[] Entries, string DIR)
     {
@@ -589,11 +518,11 @@ public class RomFS
         else
             MetaData.M_DirTableLen += 0x18 + (uint)Align((ulong)dir.Name.Length * 2, 4);
 
-        FileInfo[] files = dir.GetFiles();
+        FileInfo[] files = SortedDirectory.GetFiles(dir);
         foreach (FileInfo t in files)
             MetaData.M_FileTableLen += 0x20 + (uint)Align((ulong)t.Name.Length * 2, 4);
 
-        DirectoryInfo[] SubDirectories = dir.GetDirectories();
+        DirectoryInfo[] SubDirectories = SortedDirectory.GetDirectories(dir);
         foreach (DirectoryInfo t in SubDirectories)
             CalcDirSize(MetaData, t);
 
@@ -700,7 +629,7 @@ public class RomFS
 
     internal static void AddDir(Romfs_MetaData MetaData, DirectoryInfo Dir, uint parent, uint sibling, bool DoSubs)
     {
-        DirectoryInfo[] SubDirectories = Dir.GetDirectories();
+        DirectoryInfo[] SubDirectories = SortedDirectory.GetDirectories(Dir);
         if (!DoSubs)
         {
             uint CurrentDir = MetaData.DirTableLen;
@@ -975,8 +904,8 @@ public class RomFS
 
         internal void AddDirectory(DirectoryInfo dir)
         {
-            NameEntryTable.AddRange(dir.GetFiles());
-            foreach (DirectoryInfo subdir in dir.GetDirectories())
+            NameEntryTable.AddRange(SortedDirectory.GetFiles(dir));
+            foreach (DirectoryInfo subdir in SortedDirectory.GetDirectories(dir))
             {
                 AddDirectory(subdir);
             }
