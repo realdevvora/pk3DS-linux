@@ -1,0 +1,133 @@
+using System;
+using System.IO;
+using pk3DS.Core;
+using pk3DS.Core.CTR;
+
+namespace pk3DS.Cli;
+
+/// <summary>
+/// Maps each command-line operation onto the corresponding <c>pk3DS.Core</c> call.
+/// </summary>
+public static class Commands
+{
+    private static readonly string[] NoOptions = [];
+
+    public static readonly Command[] All =
+    [
+        new("ncsd", "extract", "<rom.3ds> <outDir>", "Extract exheader, exefs, romfs and more from a .3ds cartridge dump",
+            NoOptions, a =>
+            {
+                var (rom, outDir) = Two(a);
+                new NCSD().ExtractFilesFromNCSD(rom, outDir, new ConsoleProgressSink());
+                return true;
+            }),
+
+        new("ncch", "extract", "<game.cxi> <outDir>", "Extract exheader, exefs and romfs from a CXI",
+            NoOptions, a =>
+            {
+                var (cxi, outDir) = Two(a);
+                new NCCH().ExtractNCCHFromFile(cxi, outDir, new ConsoleProgressSink());
+                return true;
+            }),
+
+        new("romfs", "extract", "<romfs.bin> <outDir>", "Extract a RomFS image to a directory",
+            NoOptions, a =>
+            {
+                var (romfs, outDir) = Two(a);
+                new RomFS(romfs).ExtractRomFS(outDir, new ConsoleProgressSink());
+                return true;
+            }),
+
+        new("romfs", "build", "<inDir> <out.bin>", "Build a RomFS image from a directory",
+            NoOptions, a =>
+            {
+                var (inDir, outFile) = Two(a);
+                RomFS.BuildRomFS(inDir, outFile, new ConsoleProgressSink());
+                return true;
+            }),
+
+        new("exefs", "unpack", "<exefs.bin> <outDir>", "Unpack an ExeFS image to a directory of .bin files",
+            NoOptions, a =>
+            {
+                var (exefs, outDir) = Two(a);
+                return ExeFS.UnpackExeFS(exefs, outDir);
+            }),
+
+        new("exefs", "pack", "<out.bin> <file>...", "Pack up to 8 files into an ExeFS image",
+            NoOptions, a =>
+            {
+                string[] args = a.ExpectAtLeast(2);
+                return ExeFS.PackExeFS(args[1..], args[0]);
+            }),
+
+        new("blz", "decode", "<file>...", "Decompress bottom-LZ files in place",
+            NoOptions, a => Blz(a, "-d")),
+
+        new("blz", "encode", "<file>... [--best] [--arm9]", "Compress files with bottom-LZ in place",
+            NoOptions, a => Blz(a, "-e" + (a.Has("best") ? "o" : "n") + (a.Has("arm9") ? "9" : ""))),
+
+        new("lzss", "decompress", "<in> <out>", "Decompress an LZSS (LZ10/LZ11) file",
+            NoOptions, a =>
+            {
+                var (inFile, outFile) = Two(a);
+                long size = LZSS.Decompress(inFile, outFile);
+                Console.WriteLine($"{size} bytes");
+                return true;
+            }),
+
+        new("lzss", "compress", "<in> <out>", "Compress a file with LZSS (LZ11)",
+            NoOptions, a =>
+            {
+                var (inFile, outFile) = Two(a);
+                int size = LZSS.Compress(inFile, outFile);
+                Console.WriteLine($"{size} bytes");
+                return true;
+            }),
+
+        new("cro", "hash", "<crr> <croDir> [--no-save-cro] [--no-save-crr]", "Recompute CRO hashes and write them into the CRR",
+            NoOptions, a =>
+            {
+                var (crr, croDir) = Two(a);
+                a.RejectUnknown("no-save-cro", "no-save-crr");
+                return CRO.E_HashCRR(crr, croDir, !a.Has("no-save-cro"), !a.Has("no-save-crr"), new ConsoleProgressSink());
+            }),
+
+        new("rom", "build", "--exefs <path> --romfs <path> --exheader <file> --serial <id> --out <file> [--logo <name>] [--card2] [--trimmed]",
+            "Assemble a .3ds from ExeFS, RomFS and exheader (logo: Nintendo, Licensed, Distributed, iQue, iQueForSystem)",
+            ["exefs", "romfs", "exheader", "serial", "out", "logo"], a =>
+            {
+                a.Expect(0);
+                a.RejectUnknown("exefs", "romfs", "exheader", "serial", "out", "logo", "card2", "trimmed");
+                string exefs = a.Require("exefs");
+                string romfs = a.Require("romfs");
+                string exheader = a.Require("exheader");
+                string serial = a.Require("serial");
+                string output = a.Require("out");
+                string logo = a.Get("logo") ?? "Nintendo";
+                if (!IsLogo(logo))
+                    throw new UsageException($"Unknown logo '{logo}'.");
+                return CTRUtil.BuildROM(a.Has("card2"), logo, exefs, romfs, exheader, serial, output, a.Has("trimmed"), new ConsoleProgressSink());
+            }),
+    ];
+
+    private static (string First, string Second) Two(CommandArgs a)
+    {
+        string[] args = a.Expect(2);
+        return (args[0], args[1]);
+    }
+
+    private static bool Blz(CommandArgs a, string mode)
+    {
+        string[] files = a.ExpectAtLeast(1);
+        foreach (string file in files)
+        {
+            if (!File.Exists(file))
+                throw new FileNotFoundException("File not found.", file);
+        }
+        _ = new BLZCoder([mode, .. files]);
+        return true;
+    }
+
+    private static bool IsLogo(string name) =>
+        name is "Nintendo" or "Licensed" or "Distributed" or "iQue" or "iQueForSystem";
+}
