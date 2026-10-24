@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Windows.Forms;
 
 namespace pk3DS.Core.CTR;
 
@@ -118,7 +117,7 @@ public class NCCH
         }
     }
 
-    public void ExtractNCCHFromFile(string NCCH_PATH, string outputDirectory, RichTextBox TB_Progress = null, ProgressBar PB_Show = null)
+    public void ExtractNCCHFromFile(string NCCH_PATH, string outputDirectory, IProgressSink progress = null)
     {
         if (!Directory.Exists(outputDirectory))
             Directory.CreateDirectory(outputDirectory);
@@ -139,15 +138,15 @@ public class NCCH
             _ = fs.Read(plainregion, 0, plainregion.Length);
         }
 
-        ExtractExheader(NCCH_PATH, outputDirectory, TB_Progress);
-        ExtractExeFS(NCCH_PATH, outputDirectory, TB_Progress);
-        ExtractRomFS(NCCH_PATH, outputDirectory, TB_Progress, PB_Show);
+        ExtractExheader(NCCH_PATH, outputDirectory, progress);
+        ExtractExeFS(NCCH_PATH, outputDirectory, progress);
+        ExtractRomFS(NCCH_PATH, outputDirectory, progress);
     }
 
-    private void ExtractExheader(string NCCH_PATH, string outputDirectory, RichTextBox TB_Progress = null)
+    private void ExtractExheader(string NCCH_PATH, string outputDirectory, IProgressSink progress = null)
     {
         string exheaderpath = Path.Combine(outputDirectory, "exheader.bin");
-        UpdateTB(TB_Progress, "Extracting exheader.bin from CXI...");
+        progress?.Log("Extracting exheader.bin from CXI...");
         byte[] exheaderbytes = new byte[Header.ExheaderSize * 2];
 
         using (var fs = new FileStream(NCCH_PATH, FileMode.Open, FileAccess.Read))
@@ -160,11 +159,11 @@ public class NCCH
         Exheader = new Exheader(exheaderpath);
     }
 
-    private void ExtractExeFS(string NCCH_PATH, string outputDirectory, RichTextBox TB_Progress = null)
+    private void ExtractExeFS(string NCCH_PATH, string outputDirectory, IProgressSink progress = null)
     {
         string exefsbinpath = Path.Combine(outputDirectory, "exefs.bin");
         string exefspath = Path.Combine(outputDirectory, "exefs");
-        UpdateTB(TB_Progress, "Extracting exefs.bin from CXI...");
+        progress?.Log("Extracting exefs.bin from CXI...");
         byte[] exefsbytes = new byte[Header.ExefsSize * MEDIA_UNIT_SIZE];
 
         using (var fs = new FileStream(NCCH_PATH, FileMode.Open, FileAccess.Read))
@@ -178,78 +177,48 @@ public class NCCH
         File.Delete(exefsbinpath);
     }
 
-    private void ExtractRomFS(string NCCH_PATH, string outputDirectory, RichTextBox TB_Progress = null, ProgressBar PB_Show = null)
+    private void ExtractRomFS(string NCCH_PATH, string outputDirectory, IProgressSink progress = null)
     {
-        UpdateTB(TB_Progress, "Extracting romfs.bin from CXI...");
+        progress?.Log("Extracting romfs.bin from CXI...");
         string romfsbinpath = Path.Combine(outputDirectory, "romfs.bin");
         string romfspath = Path.Combine(outputDirectory, "romfs");
         byte[] romfsBytes = new byte[MEDIA_UNIT_SIZE];
 
         using (FileStream ncchstream = new(NCCH_PATH, FileMode.Open, FileAccess.Read),
-               romfsstream = new(romfsbinpath, FileMode.Append, FileAccess.Write))
+               romfsstream = new(romfsbinpath, FileMode.Create, FileAccess.Write))
         {
             ncchstream.Seek(Convert.ToInt32(Header.RomfsOffset * MEDIA_UNIT_SIZE), SeekOrigin.Begin);
-            if (PB_Show.InvokeRequired)
-            {
-                PB_Show.Invoke((MethodInvoker)delegate { PB_Show.Minimum = 0; PB_Show.Step = 1; PB_Show.Value = 0; PB_Show.Maximum = Convert.ToInt32(Header.RomfsSize); });
-            }
-            else { PB_Show.Minimum = 0; PB_Show.Step = 1; PB_Show.Value = 0; PB_Show.Maximum = Convert.ToInt32(Header.RomfsSize); }
+            progress?.Reset(Convert.ToInt32(Header.RomfsSize));
             for (int i = 0; i < Header.RomfsSize; i++)
             {
                 _ = ncchstream.Read(romfsBytes, 0, romfsBytes.Length);
                 romfsstream.Write(romfsBytes, 0, romfsBytes.Length);
-                if (PB_Show.InvokeRequired)
-                {
-                    PB_Show.Invoke((MethodInvoker)PB_Show.PerformStep);
-                }
-                else { PB_Show.PerformStep(); }
+                progress?.Step();
             }
         }
 
         var romfs = new RomFS(romfsbinpath);
-        romfs.ExtractRomFS(romfspath, TB_Progress, PB_Show);
+        romfs.ExtractRomFS(romfspath, progress);
         File.Delete(romfsbinpath);
     }
 
-    public void WriteHeaderToFile(string outputDirectory, RichTextBox TB_Progress)
+    public void WriteHeaderToFile(string outputDirectory, IProgressSink progress)
     {
-        UpdateTB(TB_Progress, "Extracting ncchheader.bin from CXI...");
+        progress?.Log("Extracting ncchheader.bin from CXI...");
         string headerParth = Path.Combine(outputDirectory, "ncchheader.bin");
         using FileStream headerStream = new(headerParth, FileMode.OpenOrCreate, FileAccess.Write);
         headerStream.Write(Header.Data, 0, Header.Data.Length);
     }
 
-    public void WritePlainRegionAndLogo(string outputDirectory, RichTextBox TB_Progress)
+    public void WritePlainRegionAndLogo(string outputDirectory, IProgressSink progress)
     {
         string plainRegionPath = Path.Combine(outputDirectory, "plain.bin");
         string logoPath = Path.Combine(outputDirectory, "logo.bcma.lz");
-        UpdateTB(TB_Progress, "Extracting plain.bin and logo.bcma.lz from CXI...");
+        progress?.Log("Extracting plain.bin and logo.bcma.lz from CXI...");
         using FileStream plainStream = new(plainRegionPath, FileMode.OpenOrCreate, FileAccess.Write);
         using FileStream logoStream = new(logoPath, FileMode.OpenOrCreate, FileAccess.Write);
         plainStream.Write(plainregion, 0, plainregion.Length);
         logoStream.Write(logo, 0, logo.Length);
     }
 
-    internal static void UpdateTB(RichTextBox RTB, string progress)
-    {
-        try
-        {
-            if (RTB.InvokeRequired)
-            {
-                RTB.Invoke((MethodInvoker)delegate
-                {
-                    RTB.AppendText(Environment.NewLine + progress);
-                    RTB.SelectionStart = RTB.Text.Length;
-                    RTB.ScrollToCaret();
-                });
-            }
-            else
-            {
-                RTB.SelectionStart = RTB.Text.Length;
-                RTB.ScrollToCaret();
-                RTB.AppendText(progress + Environment.NewLine);
-            }
-        }
-        catch { }
-    }
 }

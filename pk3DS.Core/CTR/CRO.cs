@@ -3,35 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Windows.Forms;
 
 namespace pk3DS.Core.CTR;
 
 public class CRO(byte[] data)
 {
     // Utility
-    internal static void UpdateTB(RichTextBox RTB, string progress)
-    {
-        try
-        {
-            if (RTB.InvokeRequired)
-            {
-                RTB.Invoke((MethodInvoker)delegate
-                {
-                    RTB.AppendText(Environment.NewLine + progress);
-                    RTB.SelectionStart = RTB.Text.Length;
-                    RTB.ScrollToCaret();
-                });
-            }
-            else
-            {
-                RTB.SelectionStart = RTB.Text.Length;
-                RTB.ScrollToCaret();
-                RTB.AppendText(progress + Environment.NewLine);
-            }
-        }
-        catch { }
-    }
 
     internal static int IndexOfBytes(byte[] array, byte[] pattern, int startIndex, int count)
     {
@@ -113,7 +90,7 @@ public class CRO(byte[] data)
         return results;
     }
 
-    public static bool E_HashCRR(string PATH_CRR, string PATH_CRO, bool saveCRO = true, bool saveCRR = true, RichTextBox TB_Progress = null, ProgressBar PB_Show = null)
+    public static bool E_HashCRR(string PATH_CRR, string PATH_CRO, bool saveCRO = true, bool saveCRR = true, IProgressSink progress = null)
     {
         // Get CRO files
         string[] CROFiles = Directory.GetFiles(PATH_CRO);
@@ -128,22 +105,15 @@ public class CRO(byte[] data)
         // A little validation...
         if (hashCount != CROFiles.Length)
         {
-            UpdateTB(TB_Progress,
-                $"Amount of input file-hashes does not equal the hash count in CRR. Expected {hashCount}, got {CROFiles.Length}.");
-            UpdateTB(TB_Progress, "Did not modify files. Aborting.");
+            progress?.Log($"Amount of input file-hashes does not equal the hash count in CRR. Expected {hashCount}, got {CROFiles.Length}.");
+            progress?.Log("Did not modify files. Aborting.");
             return false;
         }
 
         // Initialize Update Display
-        TB_Progress ??= new RichTextBox();
-        PB_Show ??= new ProgressBar();
-        if (PB_Show.InvokeRequired)
-        {
-            PB_Show.Invoke((MethodInvoker)delegate { PB_Show.Minimum = 0; PB_Show.Step = 1; PB_Show.Value = 0; PB_Show.Maximum = CROFiles.Length; });
-        }
-        else { PB_Show.Minimum = 0; PB_Show.Step = 1; PB_Show.Value = 0; PB_Show.Maximum = CROFiles.Length; }
-        UpdateTB(TB_Progress, "");
-        UpdateTB(TB_Progress, "Computing hashes for " + CROFiles.Length + " CRO files.");
+        progress?.Reset(CROFiles.Length);
+        progress?.Log("");
+        progress?.Log("Computing hashes for " + CROFiles.Length + " CRO files.");
 
         // Store Hashes as Strings (hacky way to sort byte[]'s against eachother
         string[] hashes = new string[CROFiles.Length];
@@ -155,13 +125,9 @@ public class CRO(byte[] data)
             if (saveCRO)
                 File.WriteAllBytes(CROFiles[i], data);
 
-            if (PB_Show.InvokeRequired)
-            {
-                PB_Show.Invoke((MethodInvoker)(() => PB_Show.PerformStep()));
-            }
-            else { PB_Show.PerformStep(); }
+            progress?.Step();
         }
-        UpdateTB(TB_Progress, "Hashes computed, now sorting."); // Don't need to fiddle the ProgressBar because this should be quite quick.
+        progress?.Log("Hashes computed, now sorting."); // Don't need to fiddle the progress counter because this should be quite quick.
         string[] hashCopy = (string[])hashes.Clone(); // Store an unsorted list for later.
         Array.Sort(hashes, string.Compare);
         // Convert Hash Strings to Bytes
@@ -169,7 +135,7 @@ public class CRO(byte[] data)
         for (int i = 0; i < hashes.Length; i++)
             hashData[i] = StringToByteArray(hashes[i]);
 
-        UpdateTB(TB_Progress, "Hashes sorted, writing hashes to CRR.");
+        progress?.Log("Hashes sorted, writing hashes to CRR.");
 
         // Loop to check which CROs have to be updated. Do this separate from overwriting so we don't overwrite hashes for other CROs (yet).
         int updatedCTR = 0;
@@ -181,7 +147,7 @@ public class CRO(byte[] data)
             {
                 // CRO was updated.
                 string file = CROFiles[Array.IndexOf(hashCopy, hashes[i])];
-                UpdateTB(TB_Progress, $"{Path.GetFileName(file)} hash has been updated.");
+                progress?.Log($"{Path.GetFileName(file)} hash has been updated.");
                 updatedCTR++;
             }
         }
@@ -189,8 +155,7 @@ public class CRO(byte[] data)
         for (int i = 0; i < hashData.Length; i++)
             Array.Copy(hashData[i], 0, CRR, hashTableOffset + (0x20 * i), 0x20);
 
-        UpdateTB(TB_Progress,
-            updatedCTR > 0
+        progress?.Log(updatedCTR > 0
                 ? $"{updatedCTR} hashes have been updated."
                 : "CRR is fine. No modifications are necessary.");
 
@@ -198,11 +163,11 @@ public class CRO(byte[] data)
         if (saveCRR && updatedCTR > 0)
         {
             File.WriteAllBytes(PATH_CRR, CRR);
-            UpdateTB(TB_Progress, "Wrote CRR.");
+            progress?.Log("Wrote CRR.");
         }
         else
         {
-            UpdateTB(TB_Progress, "CRR has not been updated.");
+            progress?.Log("CRR has not been updated.");
         }
         return true;
     }

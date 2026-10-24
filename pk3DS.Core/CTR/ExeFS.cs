@@ -16,7 +16,7 @@ public class ExeFS
     {
         if (Directory.Exists(path))
         {
-            var files = new DirectoryInfo(path).GetFiles().Select(f => f.FullName).ToArray();
+            var files = SortedDirectory.GetFilePaths(path);
             SetData(files);
         }
         else if (File.Exists(path))
@@ -27,7 +27,7 @@ public class ExeFS
         {
             throw new FileNotFoundException("File not found.", path);
         }
-        SuperBlockHash = SHA256.HashData(Data.AsSpan(0, 200));
+        SuperBlockHash = SHA256.HashData(Data.AsSpan(0, 0x200));
     }
 
     // Overall R/W files (wrapped)

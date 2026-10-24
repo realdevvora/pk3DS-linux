@@ -1,9 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <UseWindowsForms>true</UseWindowsForms>
-    <TargetFrameworks>net10.0-windows</TargetFrameworks>
+    <TargetFramework>net10.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Image handling depends on System.Drawing and the Windows-only ETC1Lib.dll; deferred until it has a cross-platform replacement. -->
+    <Compile Remove="CTR\Images\**;CTR\ETC1.cs;CTR\SMDH.cs;ImageUtil.cs;Structures\TypeChart.cs" />
+  </ItemGroup>
   <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
       <DesignTime>True</DesignTime>
