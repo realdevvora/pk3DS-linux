@@ -146,10 +146,10 @@ public class DARC
                 EntryList.Add(new FileTableEntry { DataOffset = 0, DataLength = 0, IsFolder = true, NameOffset = 2 });
                 NameList.Add(new NameTableEntry(6, "."));
             }
-            foreach (string folder in Directory.GetDirectories(folderName))
+            foreach (string folder in SortedDirectory.GetDirectoryPaths(folderName))
             {
                 string parentName = new DirectoryInfo(folder).Name;
-                string[] files = Directory.GetFiles(folder);
+                string[] files = SortedDirectory.GetFilePaths(folder);
                 NameList.Add(new NameTableEntry(nameOffset, parentName));
                 EntryList.Add(new FileTableEntry
                 {

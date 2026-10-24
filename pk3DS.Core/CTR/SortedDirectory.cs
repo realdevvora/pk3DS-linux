@@ -16,5 +16,7 @@ internal static class SortedDirectory
     public static DirectoryInfo[] GetDirectories(DirectoryInfo dir) =>
         [.. dir.GetDirectories().OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ThenBy(d => d.Name, StringComparer.Ordinal)];
 
+    public static string[] GetDirectoryPaths(string path) => [.. GetDirectories(new DirectoryInfo(path)).Select(d => d.FullName)];
+
     public static string[] GetFilePaths(string path) => [.. GetFiles(new DirectoryInfo(path)).Select(f => f.FullName)];
 }
