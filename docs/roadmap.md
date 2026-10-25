@@ -32,8 +32,8 @@ Each task is one branch and one pull request, verified like the data tables (unc
 
 ### Phase 2: `code.bin` tables
 
-6. **Core `CodeBin` helper.** One class that loads `exefs/code.bin`, finds a table by the byte patterns the editors use today, and writes it back. Moving the search code is shared by every task in this phase. Depends on the compression decision below.
-7. **TM/HM list and move tutors** (`TMHMEditor6`, `TutorEditor6`). Both are move ID lists. In game: the move a TM teaches.
+6. **Core `CodeBin` helper.** *(done)* One class that loads `exefs/code.bin`, finds a table by the byte patterns the editors use today, and writes it back. Moving the search code is shared by every task in this phase. Depends on the compression decision below.
+7. **TM/HM list** *(done)* (`TMHMEditor6`). Move tutors (`TutorEditor6`) are **skipped**: the upstream editor itself warns "Changes made do not reflect ingame. Still needs more research." In game: the move a TM teaches.
 8. **Marts** (`MartEditor6`). Item lists per shop. In game: a Poké Mart's stock.
 9. **Pickup, O-Powers, shiny rate** (`PickupEditor6`, `OPower`, `ShinyRate`). Small tables; the shiny rate is a code patch, not a table. Low priority.
 

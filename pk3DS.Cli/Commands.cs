@@ -192,6 +192,7 @@ public static class Commands
         .. DataCommands("trainerpoke", DataTable.TrainerPokemon, "trainer teams (one row per team slot)"),
         .. DataCommands("maisontrainer", DataTable.MaisonTrainer, "Battle Maison trainers and the Pokémon each picks from", DataTable.SuperMaisonTrainer),
         .. DataCommands("maisonpoke", DataTable.MaisonPokemon, "the Battle Maison Pokémon pool", DataTable.SuperMaisonPokemon),
+        .. DataCommands("tmhm", DataTable.TMHM, "the moves taught by TMs and HMs (needs a decompressed code.bin)"),
 
         new("blz", "decode", "<file>...", "Decompress bottom-LZ files in place",
             NoOptions, a => Blz(a, "-d")),

@@ -23,6 +23,7 @@ public enum DataTable
     MaisonPokemon,
     SuperMaisonTrainer,
     SuperMaisonPokemon,
+    TMHM,
 }
 
 /// <summary>
@@ -170,6 +171,7 @@ public static class DataTableFile
             DataTable.MaisonPokemon => new(MaisonPokemonColumns(config, false), config.MaisonPokemon.Length, All, () => config.SaveMaisonPokemon(false), config.InitializeMaison),
             DataTable.SuperMaisonTrainer => new(MaisonTrainerColumns(config, true), config.SuperMaisonTrainers.Length, All, () => config.SaveMaisonTrainers(true), config.InitializeMaison),
             DataTable.SuperMaisonPokemon => new(MaisonPokemonColumns(config, true), config.SuperMaisonPokemon.Length, All, () => config.SaveMaisonPokemon(true), config.InitializeMaison),
+            DataTable.TMHM => TMHMTable(config),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
     }
@@ -545,6 +547,38 @@ public static class DataTableFile
             Number("item", i => t[i].Item, (i, v) => t[i].Item = (ushort)v, 0, config.Info.MaxItemID),
             Text("item_name", i => items[t[i].Item]),
         ];
+    }
+
+    /// <summary>The TM and HM moves (TM01-TM100, then HM01-HM07), edited in code.bin.</summary>
+    private static Table TMHMTable(GameConfig config)
+    {
+        var code = CodeBin.Load(config.ExeFS);
+        var tm = new TMHM6(code, config.ORAS);
+        int tmCount = tm.TMs.Length;
+        ushort[] moves = [.. tm.TMs, .. tm.HMs];
+        string[] moveNames = config.GetText(TextName.MoveNames);
+
+        Column[] columns =
+        [
+            Index(),
+            Text("name", i => i < tmCount ? $"TM{i + 1:00}" : $"HM{i - tmCount + 1:00}"),
+            Number("move", i => moves[i], (i, v) => moves[i] = (ushort)v, 0, config.Info.MaxMoveID),
+            Text("move_name", i => moveNames[moves[i]]),
+        ];
+        int Save()
+        {
+            var original = new TMHM6(code, config.ORAS);
+            int changed = moves.Where((m, i) => m != (i < tmCount ? original.TMs[i] : original.HMs[i - tmCount])).Count();
+            moves[..tmCount].CopyTo(tm.TMs, 0);
+            moves[tmCount..].CopyTo(tm.HMs, 0);
+            tm.Write(code);
+            code.Save();
+            if (tm.SetItemDescriptions(config, original))
+                config.SaveGameText();
+            return changed;
+        }
+        // Edits only live in the local list until Save, so there is nothing to discard.
+        return new(columns, moves.Length, _ => true, Save, () => { });
     }
 
     /// <summary>

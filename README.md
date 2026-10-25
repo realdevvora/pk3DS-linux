@@ -47,7 +47,7 @@ Below are some images of how the editor should look when you run it.
 This fork separates pk3DS's file tooling from the Windows UI so it can run on macOS and Linux:
 
 - **`pk3DS.Core`** is a plain `net10.0` class library with no Windows dependency. Long-running operations report through an `IProgressSink` instead of WinForms `ProgressBar` / `RichTextBox` controls, and `null` is accepted. The image code that needs `System.Drawing` is excluded from the build for now.
-- **`pk3DS.Cli`** builds the `pk3ds` command. It covers the game container, archive, compression and hashing operations, plus game text and the species, level-up move, egg move, move, evolution, item, Mega Evolution, trainer and Battle Maison tables; the rest of the data-editing code (encounters, trainers, randomizers and so on) is not exposed yet:
+- **`pk3DS.Cli`** builds the `pk3ds` command. It covers the game container, archive, compression and hashing operations, plus game text and the species, level-up move, egg move, move, evolution, item, Mega Evolution, trainer, Battle Maison and TM/HM tables; the rest of the data-editing code (encounters, trainers, randomizers and so on) is not exposed yet:
 
 | Command | What it does |
 |---|---|
@@ -69,12 +69,15 @@ This fork separates pk3DS's file tooling from the Windows UI so it can run on ma
 | `trainer dump <out.tsv>` / `trainer import <in.tsv>` | Trainer data, one row per trainer: class, whether team members carry items and custom moves, battle type, items, AI, money, prize |
 | `trainerpoke dump <out.tsv>` / `trainerpoke import <in.tsv>` | Trainer teams, one row per team slot (`trainer`, `slot`, species, form, level, IVs, ability, gender, item, moves). A trainer that appears in the file gets exactly those rows as its team, so slots can be added or removed |
 | `maisontrainer dump/import` and `maisonpoke dump/import` (`--super` for the Super Battle Maison) | Battle Maison trainers (class and the pool Pokémon they pick from) and the Pokémon pool (species, moves, EV spreads, nature, item) |
+| `tmhm dump <out.tsv>` / `tmhm import <in.tsv>` | The move each TM and HM teaches. Changing a TM's move also copies the move's description into the TM item's description |
 | `blz decode\|encode <file>...` | Bottom-LZ (de)compression in place |
 | `lzss compress\|decompress <in> <out>` | LZSS (de)compression |
 | `cro hash <crr> <croDir>` | Recompute CRO hashes and update the CRR |
 | `rom build --exefs --romfs --exheader --serial --out` | Assemble a `.3ds` (fixed-key encrypted, for custom firmware or emulators) |
 
 Game-data commands take `--dir <folder>` (a folder holding the extracted `romfs` and `exefs`), or `--romfs` and `--exefs` separately, and `--lang <0-9>` (2 is English, the default). Text lines may contain bracketed control codes such as `[VAR ...]`; `text import` rejects malformed ones with the file name, skips files whose text you did not change, and trims leading and trailing spaces from each line, as pk3DS always has.
+
+Tables stored in the game executable (`tmhm`, `mart`, `pickup`) need a decompressed `exefs/.code.bin`, as in pk3DS: run `pk3ds blz decode` on it once, and `pk3ds blz encode` before `rom build` (about 75 seconds).
 
 Spreadsheet files (`.tsv`) are tab-separated with a header row and open in Numbers or Excel; the columns are listed in [docs/data-commands-spec.md](docs/data-commands-spec.md). Name columns are only for reading: edit the number columns. `import` checks every row before writing anything, reports errors by line and column, accepts files with only the rows you changed, and writes only entries whose data changed.
 

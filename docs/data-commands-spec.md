@@ -135,6 +135,8 @@ Column names are the Core property names in snake case. Values are shown the way
 
 **maisonpoke** (999 rows): `index species species_name move1 move2 move3 move4 move_names ev_hp ev_atk ev_def ev_spe ev_spa ev_spd nature nature_name item item_name`. The `ev_*` columns are 1 for each stat the Pokémon trains. The form (the last two bytes) is not a column and is kept, as in the editor.
 
+**tmhm** (107 rows): `index name move move_name`, TM01-TM100 then HM01-HM07. When a TM's or HM's move changes, the move's description is copied into the TM/HM item's description and the game text is saved, as `TMHMEditor6` intended (it rewrote all of them; only changed ones here).
+
 ## Verification
 
 For each table, before it is committed:
