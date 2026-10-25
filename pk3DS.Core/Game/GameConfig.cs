@@ -115,6 +115,7 @@ public class GameConfig
         InitializeEggMoves();
         InitializeItems();
         InitializeMegaEvolutions();
+        InitializeTrainers();
         InitializeGameInfo();
     }
 
@@ -152,6 +153,18 @@ public class GameConfig
     public void InitializeMegaEvolutions()
     {
         MegaEvolutions = GetGARCData("megaevo").Files.Select(file => new MegaEvolutions(file)).ToArray();
+    }
+
+    /// <summary>Loads the Gen 6 trainers. Entry 0 is a placeholder and stays null, as RSTE never opened it.</summary>
+    public void InitializeTrainers()
+    {
+        if (Generation != 6)
+            return;
+        byte[][] d = GetGARCData("trdata").Files;
+        byte[][] p = GetGARCData("trpoke").Files;
+        Trainers = new TrainerData6[d.Length];
+        for (int i = 1; i < d.Length; i++)
+            Trainers[i] = new TrainerData6(d[i], p[i], ORAS);
     }
 
     /// <summary>Loads the story text, which <see cref="InitializeAll"/> does not (the upstream story text editor read it on open).</summary>
@@ -304,6 +317,34 @@ public class GameConfig
         return changed;
     }
 
+    public int SaveTrainers()
+    {
+        var gd = GetGARCData("trdata");
+        var gp = GetGARCData("trpoke");
+        byte[][] d = gd.Files;
+        byte[][] p = gp.Files;
+        int changed = 0;
+        for (int i = 1; i < Trainers.Length; i++)
+        {
+            byte[] data = Trainers[i].Write();
+            byte[] team = Trainers[i].WriteTeam();
+            var original = new TrainerData6(d[i], p[i], ORAS);
+            if (data.AsSpan().SequenceEqual(original.Write()) && team.AsSpan().SequenceEqual(original.WriteTeam()))
+                continue;
+            d[i] = data;
+            p[i] = team;
+            changed++;
+        }
+        if (changed == 0)
+            return 0;
+        gd.Files = d;
+        gp.Files = p;
+        gd.Save();
+        gp.Save();
+        InitializeTrainers();
+        return changed;
+    }
+
     public int SaveGameText() => SaveText(GARCGameText, GameTextStrings, RemapCharacters);
 
     public int SaveStoryText() => SaveText(GARCStoryText, StoryTextStrings, false);
@@ -442,6 +483,7 @@ public class GameConfig
     public EggMoves[] EggMoves { get; private set; }
     public Item[] Items { get; private set; }
     public MegaEvolutions[] MegaEvolutions { get; private set; }
+    public TrainerData6[] Trainers { get; private set; }
 
     public bool XY => Version == GameVersion.XY;
     public bool ORAS => Version is GameVersion.ORAS or GameVersion.ORASDEMO;

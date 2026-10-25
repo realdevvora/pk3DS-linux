@@ -188,6 +188,8 @@ public static class Commands
         .. DataCommands("eggmove", DataTable.EggMove, "egg moves"),
         .. DataCommands("item", DataTable.Item, "item data (prices, effects, pockets)"),
         .. DataCommands("megaevo", DataTable.MegaEvo, "Mega Evolutions (form and Mega Stone)"),
+        .. DataCommands("trainer", DataTable.Trainer, "trainer data (class, items, AI, prize; one row per trainer)"),
+        .. DataCommands("trainerpoke", DataTable.TrainerPokemon, "trainer teams (one row per team slot)"),
 
         new("blz", "decode", "<file>...", "Decompress bottom-LZ files in place",
             NoOptions, a => Blz(a, "-d")),

@@ -127,6 +127,10 @@ Column names are the Core property names in snake case. Values are shown the way
 
 **megaevo** (826 rows): `index name form mega1 mega2 mega3 mega_names`. Each `megaN` is `form:method:argument`, the three slots of `MegaEvoEditor6`. Method 1 means holding the item given as `argument` (checked against the item list), and method 2 is Rayquaza's. A slot with method 0 is written with form and argument 0, as `MegaEvolutions.Write()` always has. The fourth field of each slot (`u6`, always 0) is not a column and is kept.
 
+**trainer** (949 rows, trainers 1-949; entry 0 is a placeholder): `index name class class_name has_items has_moves battle_type team_size item1 item2 item3 item4 ai u1 u2 u3 healer money prize`, the fields `RSTE` edits. `team_size` is read-only: it follows the trainer's rows in the team file.
+
+**trainerpoke** (one row per team slot): `trainer trainer_name slot species species_name form level ivs ability gender u_bit item move1 move2 move3 move4 move_names`. A trainer that has rows in the file gets exactly those slots as its team (slots 0 to n-1, at most 6). A grown team starts new slots from an empty Pokémon, as `RSTE` does. Trainers without rows keep their team. `item` and the moves can only be non-zero when the trainer's `has_items` / `has_moves` is 1, because otherwise the game does not store them; set those in the trainer file first. Ability is 0-3 (any, 1, 2, hidden) and level 0-100, the editor's lists.
+
 ## Verification
 
 For each table, before it is committed:

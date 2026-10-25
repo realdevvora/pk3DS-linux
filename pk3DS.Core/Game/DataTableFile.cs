@@ -17,6 +17,8 @@ public enum DataTable
     EggMove,
     Item,
     MegaEvo,
+    Trainer,
+    TrainerPokemon,
 }
 
 /// <summary>
@@ -37,13 +39,21 @@ public static class DataTableFile
     /// <returns>Number of entries written</returns>
     public static int Dump(GameConfig config, DataTable table, string path)
     {
-        var (columns, count) = GetColumns(config, table);
+        if (table == DataTable.TrainerPokemon)
+            return DumpTeams(config, path);
+        var (columns, count, exists) = GetColumns(config, table);
+        int[] rows = [.. Enumerable.Range(0, count).Where(exists)];
+        WriteRows(path, columns, rows.Length, r => rows[r]);
+        return rows.Length;
+    }
+
+    private static void WriteRows(string path, Column[] columns, int rowCount, Func<int, int> entry)
+    {
         var sb = new StringBuilder();
         sb.Append(string.Join('\t', columns.Select(c => c.Name))).Append('\n');
-        for (int i = 0; i < count; i++)
-            sb.Append(string.Join('\t', columns.Select(c => c.Get(i)))).Append('\n');
+        for (int r = 0; r < rowCount; r++)
+            sb.Append(string.Join('\t', columns.Select(c => c.Get(entry(r))))).Append('\n');
         File.WriteAllText(path, sb.ToString(), Utf8);
-        return count;
     }
 
     /// <summary>
@@ -52,39 +62,22 @@ public static class DataTableFile
     /// <returns>Number of entries written; 0 if nothing changed</returns>
     public static int Import(GameConfig config, DataTable table, string path)
     {
-        var (columns, count) = GetColumns(config, table);
+        if (table == DataTable.TrainerPokemon)
+            return ImportTeams(config, path);
+        var (columns, count, exists) = GetColumns(config, table);
         string file = Path.GetFileName(path);
-        string[] lines = File.ReadAllText(path, Utf8).Split('\n');
-        int end = lines.Length;
-        while (end > 0 && lines[end - 1].TrimEnd('\r').Length == 0)
-            end--;
-        if (end == 0)
-            throw new InvalidDataException($"{file}: the file is empty.");
-        CheckHeader(file, lines[0].TrimEnd('\r').Split('\t'), columns);
+        var rows = ReadRows(path, columns);
 
         try
         {
             var seen = new HashSet<int>();
-            for (int l = 1; l < end; l++)
+            foreach (var (line, cells) in rows)
             {
-                string[] cells = lines[l].TrimEnd('\r').Split('\t');
-                if (cells.Length != columns.Length)
-                    throw new InvalidDataException($"{file}:{l + 1}: expected {columns.Length} cells, found {cells.Length}.");
-                if (!int.TryParse(cells[0], NumberStyles.None, Invariant, out int index) || index >= count)
-                    throw new InvalidDataException($"{file}:{l + 1}: index: '{cells[0]}' is not a number between 0 and {count - 1}.");
+                if (!int.TryParse(cells[0], NumberStyles.None, Invariant, out int index) || index >= count || !exists(index))
+                    throw new InvalidDataException($"{file}:{line}: index: '{cells[0]}' is not the number of an entry.");
                 if (!seen.Add(index))
-                    throw new InvalidDataException($"{file}:{l + 1}: index: {index} appears more than once.");
-                for (int c = 1; c < columns.Length; c++)
-                {
-                    try
-                    {
-                        columns[c].Set?.Invoke(index, cells[c]);
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new InvalidDataException($"{file}:{l + 1}: {columns[c].Name}: {e.Message}", e);
-                    }
-                }
+                    throw new InvalidDataException($"{file}:{line}: index: {index} appears more than once.");
+                ApplyRow(file, line, columns, cells, index, 1);
             }
         }
         catch
@@ -94,6 +87,46 @@ public static class DataTableFile
             throw;
         }
         return Save(config, table);
+    }
+
+    /// <summary>Reads the data rows of a file, after checking its header and the number of cells in each row.</summary>
+    /// <returns>Each row's line number and cells</returns>
+    private static List<(int Line, string[] Cells)> ReadRows(string path, Column[] columns)
+    {
+        string file = Path.GetFileName(path);
+        string[] lines = File.ReadAllText(path, Utf8).Split('\n');
+        int end = lines.Length;
+        while (end > 0 && lines[end - 1].TrimEnd('\r').Length == 0)
+            end--;
+        if (end == 0)
+            throw new InvalidDataException($"{file}: the file is empty.");
+        CheckHeader(file, lines[0].TrimEnd('\r').Split('\t'), columns);
+
+        var rows = new List<(int, string[])>();
+        for (int l = 1; l < end; l++)
+        {
+            string[] cells = lines[l].TrimEnd('\r').Split('\t');
+            if (cells.Length != columns.Length)
+                throw new InvalidDataException($"{file}:{l + 1}: expected {columns.Length} cells, found {cells.Length}.");
+            rows.Add((l + 1, cells));
+        }
+        return rows;
+    }
+
+    /// <summary>Applies the cells of one row, from column <paramref name="first"/> on, to the entry <paramref name="target"/>.</summary>
+    private static void ApplyRow(string file, int line, Column[] columns, string[] cells, int target, int first)
+    {
+        for (int c = first; c < columns.Length; c++)
+        {
+            try
+            {
+                columns[c].Set?.Invoke(target, cells[c]);
+            }
+            catch (FormatException e)
+            {
+                throw new InvalidDataException($"{file}:{line}: {columns[c].Name}: {e.Message}", e);
+            }
+        }
     }
 
     private static void CheckHeader(string file, string[] header, Column[] columns)
@@ -110,11 +143,11 @@ public static class DataTableFile
         }
     }
 
-    private static (Column[] Columns, int Count) GetColumns(GameConfig config, DataTable table)
+    /// <returns>The columns, the number of entries, and which of them exist (trainer 0 is a placeholder)</returns>
+    private static (Column[] Columns, int Count, Func<int, bool> Exists) GetColumns(GameConfig config, DataTable table)
     {
-        if (!config.ORAS)
-            throw new NotSupportedException("Data tables are only supported for Omega Ruby / Alpha Sapphire so far.");
-        return table switch
+        RequireORAS(config);
+        var (columns, count) = table switch
         {
             DataTable.Personal => (PersonalColumns(config), config.Personal.Table.Length),
             DataTable.Learnset => (LearnsetColumns(config), config.Learnsets.Length),
@@ -123,8 +156,16 @@ public static class DataTableFile
             DataTable.EggMove => (EggMoveColumns(config), config.EggMoves.Length),
             DataTable.Item => (ItemColumns(config), config.Items.Length),
             DataTable.MegaEvo => (MegaEvoColumns(config), config.MegaEvolutions.Length),
+            DataTable.Trainer => (TrainerColumns(config), config.Trainers.Length),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
+        return (columns, count, table == DataTable.Trainer ? i => config.Trainers[i] != null : _ => true);
+    }
+
+    private static void RequireORAS(GameConfig config)
+    {
+        if (!config.ORAS)
+            throw new NotSupportedException("Data tables are only supported for Omega Ruby / Alpha Sapphire so far.");
     }
 
     private static void Reload(GameConfig config, DataTable table)
@@ -138,6 +179,7 @@ public static class DataTableFile
             case DataTable.EggMove: config.InitializeEggMoves(); break;
             case DataTable.Item: config.InitializeItems(); break;
             case DataTable.MegaEvo: config.InitializeMegaEvolutions(); break;
+            case DataTable.Trainer: config.InitializeTrainers(); break;
         }
     }
 
@@ -150,6 +192,7 @@ public static class DataTableFile
         DataTable.EggMove => config.SaveEggMoves(),
         DataTable.Item => config.SaveItems(),
         DataTable.MegaEvo => config.SaveMegaEvolutions(),
+        DataTable.Trainer => config.SaveTrainers(),
         _ => throw new ArgumentOutOfRangeException(nameof(table)),
     };
 
@@ -429,6 +472,153 @@ public static class DataTableFile
             .Where(k => t[i].Method[k] != 0)
             .Select(k => t[i].Method[k] == 1 ? $"form {t[i].Form[k]} with {items[t[i].Argument[k]]}" : $"form {t[i].Form[k]} by method {t[i].Method[k]}"))));
         return [.. columns];
+    }
+
+    private static Column[] TrainerColumns(GameConfig config)
+    {
+        var t = config.Trainers;
+        string[] names = config.GetText(TextName.TrainerNames);
+        string[] classes = config.GetText(TextName.TrainerClasses);
+        int maxItem = config.Info.MaxItemID;
+
+        // The fields RSTE edits. team_size follows the trainer's rows in the trainerpoke file.
+        return
+        [
+            Index(),
+            Text("name", i => i < names.Length ? names[i] : null),
+            Number("class", i => t[i].Class, (i, v) => t[i].Class = v, 0, classes.Length - 1),
+            Text("class_name", i => classes[t[i].Class]),
+            Flag("has_items", i => t[i].Item, (i, v) => t[i].Item = v),
+            Flag("has_moves", i => t[i].Moves, (i, v) => t[i].Moves = v),
+            Number("battle_type", i => t[i].BattleType, (i, v) => t[i].BattleType = (byte)v, 0, 255),
+            Text("team_size", i => t[i].NumPokemon.ToString(Invariant)),
+            Element("item1", i => [.. t[i].Items.Select(z => (int)z)], (i, a) => t[i].Items = [.. a.Select(z => (ushort)z)], 0, maxItem),
+            Element("item2", i => [.. t[i].Items.Select(z => (int)z)], (i, a) => t[i].Items = [.. a.Select(z => (ushort)z)], 1, maxItem),
+            Element("item3", i => [.. t[i].Items.Select(z => (int)z)], (i, a) => t[i].Items = [.. a.Select(z => (ushort)z)], 2, maxItem),
+            Element("item4", i => [.. t[i].Items.Select(z => (int)z)], (i, a) => t[i].Items = [.. a.Select(z => (ushort)z)], 3, maxItem),
+            Number("ai", i => t[i].AI, (i, v) => t[i].AI = (byte)v, 0, 255),
+            Number("u1", i => t[i].u1, (i, v) => t[i].u1 = (byte)v, 0, 255),
+            Number("u2", i => t[i].u2, (i, v) => t[i].u2 = (byte)v, 0, 255),
+            Number("u3", i => t[i].u3, (i, v) => t[i].u3 = (byte)v, 0, 255),
+            Flag("healer", i => t[i].Healer, (i, v) => t[i].Healer = v),
+            Number("money", i => t[i].Money, (i, v) => t[i].Money = (byte)v, 0, 255),
+            Number("prize", i => t[i].Prize, (i, v) => t[i].Prize = (ushort)v, 0, maxItem),
+        ];
+    }
+
+    /// <summary>
+    /// Columns of the trainer team file: one row per team slot. Row <c>r</c> is slot <c>keys[r].Slot</c> of trainer <c>keys[r].Trainer</c>, held in <c>mons[r]</c>.
+    /// </summary>
+    private static Column[] TeamColumns(GameConfig config, List<(int Trainer, int Slot)> keys, List<TrainerData6.Pokemon> mons)
+    {
+        var t = config.Trainers;
+        string[] names = config.GetText(TextName.TrainerNames);
+        string[] species = config.GetText(TextName.SpeciesNames);
+        string[] moveNames = config.GetText(TextName.MoveNames);
+        int maxItem = config.Info.MaxItemID;
+        int maxMove = config.Info.MaxMoveID;
+
+        // An item or move is only stored if the trainer has has_items / has_moves set, as in RSTE.
+        Column Move(int k) => new($"move{k + 1}", r => mons[r].Moves[k].ToString(Invariant), (r, s) =>
+        {
+            int v = ParseNumber(s, 0, maxMove);
+            if (v != 0 && !t[keys[r].Trainer].Moves)
+                throw new FormatException($"trainer {keys[r].Trainer} does not store moves; set has_moves to 1 in the trainer file first.");
+            mons[r].Moves[k] = (ushort)v;
+        });
+
+        return
+        [
+            new("trainer", r => keys[r].Trainer.ToString(Invariant)),
+            Text("trainer_name", r => keys[r].Trainer < names.Length ? names[keys[r].Trainer] : null),
+            new("slot", r => keys[r].Slot.ToString(Invariant)),
+            Number("species", r => mons[r].Species, (r, v) => mons[r].Species = (ushort)v, 0, config.MaxSpeciesID),
+            Text("species_name", r => species[mons[r].Species]),
+            Number("form", r => mons[r].Form, (r, v) => mons[r].Form = (ushort)v, 0, ushort.MaxValue),
+            Number("level", r => mons[r].Level, (r, v) => mons[r].Level = (ushort)v, 0, 100),
+            Number("ivs", r => mons[r].IVs, (r, v) => mons[r].IVs = (byte)v, 0, 255),
+            Number("ability", r => mons[r].Ability, (r, v) => mons[r].Ability = v, 0, 3),
+            Number("gender", r => mons[r].Gender, (r, v) => mons[r].Gender = v, 0, 3),
+            Number("u_bit", r => mons[r].uBit, (r, v) => mons[r].uBit = v, 0, 1),
+            new("item", r => mons[r].Item.ToString(Invariant), (r, s) =>
+            {
+                int v = ParseNumber(s, 0, maxItem);
+                if (v != 0 && !t[keys[r].Trainer].Item)
+                    throw new FormatException($"trainer {keys[r].Trainer} does not store held items; set has_items to 1 in the trainer file first.");
+                mons[r].Item = (ushort)v;
+            }),
+            Move(0),
+            Move(1),
+            Move(2),
+            Move(3),
+            Text("move_names", r => string.Join(", ", mons[r].Moves.Where(m => m != 0).Select(m => moveNames[m]))),
+        ];
+    }
+
+    private static int DumpTeams(GameConfig config, string path)
+    {
+        RequireORAS(config);
+        var t = config.Trainers;
+        var keys = new List<(int Trainer, int Slot)>();
+        for (int i = 0; i < t.Length; i++)
+        {
+            for (int k = 0; t[i] != null && k < t[i].Team.Length; k++)
+                keys.Add((i, k));
+        }
+        var mons = keys.Select(z => t[z.Trainer].Team[z.Slot]).ToList();
+        WriteRows(path, TeamColumns(config, keys, mons), keys.Count, r => r);
+        return keys.Count;
+    }
+
+    /// <summary>
+    /// Replaces the team of every trainer that has rows in the file with exactly those rows (slots 0 to n-1, at most 6).
+    /// Each slot is applied onto the Pokémon already in that slot, or onto an empty one when the team grows.
+    /// </summary>
+    private static int ImportTeams(GameConfig config, string path)
+    {
+        RequireORAS(config);
+        var t = config.Trainers;
+        var keys = new List<(int Trainer, int Slot)>();
+        var mons = new List<TrainerData6.Pokemon>();
+        var columns = TeamColumns(config, keys, mons);
+        string file = Path.GetFileName(path);
+        var rows = ReadRows(path, columns);
+
+        try
+        {
+            foreach (var (line, cells) in rows)
+            {
+                if (!int.TryParse(cells[0], NumberStyles.None, Invariant, out int trainer) || trainer >= t.Length || t[trainer] == null)
+                    throw new InvalidDataException($"{file}:{line}: trainer: '{cells[0]}' is not the number of a trainer.");
+                if (!int.TryParse(cells[2], NumberStyles.None, Invariant, out int slot) || slot > 5)
+                    throw new InvalidDataException($"{file}:{line}: slot: '{cells[2]}' is not a number between 0 and 5.");
+                if (keys.Contains((trainer, slot)))
+                    throw new InvalidDataException($"{file}:{line}: trainer {trainer} slot {slot} appears more than once.");
+                keys.Add((trainer, slot));
+            }
+            foreach (var g in keys.Select((z, r) => (z.Trainer, z.Slot, Row: r)).GroupBy(z => z.Trainer))
+            {
+                int size = g.Count();
+                var missing = Enumerable.Range(0, size).Except(g.Select(z => z.Slot)).ToArray();
+                if (missing.Length != 0)
+                    throw new InvalidDataException($"{file}: trainer {g.Key} has {size} rows, so it needs slots 0 to {size - 1}; slot {missing[0]} is missing.");
+                var team = t[g.Key].Team;
+                Array.Resize(ref team, size);
+                for (int k = 0; k < size; k++)
+                    team[k] ??= new TrainerData6.Pokemon(new byte[100], false, false); // as RSTE does for a new slot
+                t[g.Key].Team = team;
+                t[g.Key].NumPokemon = (byte)size;
+            }
+            mons.AddRange(keys.Select(z => t[z.Trainer].Team[z.Slot]));
+            for (int r = 0; r < rows.Count; r++)
+                ApplyRow(file, rows[r].Line, columns, rows[r].Cells, r, 0);
+        }
+        catch
+        {
+            config.InitializeTrainers();
+            throw;
+        }
+        return config.SaveTrainers();
     }
 
     /// <summary>
