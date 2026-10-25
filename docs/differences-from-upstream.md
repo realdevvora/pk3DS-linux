@@ -38,6 +38,10 @@ How the changes were checked: the rebuilt RomFS and ExeFS, all 298 GARCs and all
 | Save writes only entries whose contents changed | Every entry the user had opened was rewritten | Untouched entries keep their original bytes. This matters for egg moves: Omega Ruby stores an empty list as `00 00`, but `EggMoves6.Write()` returns zero bytes (as pk3DS always has, likely the X/Y layout), so rewriting unchanged entries changed 431 files |
 | `SaveEvolutions` reloads the table after saving | `Main` reloaded it before saving, so `Evolutions` held the old data until restart | Reloads after |
 | `GameConfig.SaveGameText` / `SaveStoryText`, `InitializeStoryText` | Text was saved by `Main` (game text) or after the story text editor closed; every file was rewritten | In Core; only files whose text changed are written, as `text import` already did. Story text is loaded on demand, as upstream's editor did |
+| `Item.Revive` getter | Reported "revive" when bit 0 was clear, the opposite of its setter and of the data (Revive and Max Revive have the bit set) | Reports the bit as stored |
+| `Item.NaturalGiftType` setter | Rebuilt the packed field from `NaturalGiftEffect`, wiping the flags and pockets | Changes only the type bits |
+| `Item.PocketBattle` setter | Masked with `0x077F`, clearing the lowest bit of the field pocket (Potion moved from pocket 1 to 0) | Masks with `0x07FF` |
+| `GameConfig.Items`, `InitializeItems`, `SaveItems` | Items were read and saved by `Main` around the item editor | In Core, like the other tables |
 | `GameConfig.EggMoves` and `InitializeEggMoves`, loaded by `InitializeAll` | Egg moves were only read inside the egg move editor | Loaded like the other tables |
 
 ## Behavior kept as upstream

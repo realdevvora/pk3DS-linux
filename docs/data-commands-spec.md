@@ -123,6 +123,8 @@ Column names are the Core property names in snake case. Values are shown the way
 - Signed exactly where the editor reads a signed value: `priority`, `recoil` and `statN_stage` are −128 to 127, and `inflict` is a signed 16-bit value, where −1 is what the editor lists as "Special".
 - `flags` lists the indexes of the checked flag boxes (`0 1 4`), the same way `tmhm` does.
 
+**item** (776 rows): the properties `ItemEditor6` shows in its property grid, in snake case (`buy_price`, `held_effect`, ..., `_0x23`, `_0x24`). `buy_price` must be a multiple of 10 (it is stored divided by 10). `sell_price` is read-only, as in the editor. Yes/no fields are `0` or `1`. The raw `Packed` value is not a column, because `natural_gift_type`, `flag1`, `flag2`, `pocket_field` and `pocket_battle` cover all of its bits.
+
 ## Verification
 
 For each table, before it is committed:

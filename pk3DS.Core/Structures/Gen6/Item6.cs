@@ -82,7 +82,7 @@ public struct Item
     public int SellPrice { readonly get => Price * 5; set => Price = (ushort)(value / 5); }
 
     [Category(Battle)]
-    public int NaturalGiftType { readonly get => Packed & 0x1F; set => Packed = (ushort)((NaturalGiftEffect & ~0x1F) | value); }
+    public int NaturalGiftType { readonly get => Packed & 0x1F; set => Packed = (ushort)((Packed & ~0x1F) | (value & 0x1F)); }
 
     [Category(Battle)]
     public bool Flag1 { readonly get => ((Packed >> 5) & 1) == 1; set => Packed = (ushort)((Packed & ~(1 << 5)) | ((value ? 1 : 0) << 5)); }
@@ -94,10 +94,10 @@ public struct Item
     public int PocketField { readonly get => (Packed >> 7) & 0xF; set => Packed = (ushort)((Packed & 0xF87F) | ((value & 0xF) << 7)); }
 
     [Category(Battle)]
-    public BattlePocket PocketBattle { readonly get => (BattlePocket)(Packed >> 11); set => Packed = (ushort)((Packed & 0x077F) | (((byte)value & 0x1F) << 11)); }
+    public BattlePocket PocketBattle { readonly get => (BattlePocket)(Packed >> 11); set => Packed = (ushort)((Packed & 0x07FF) | (((byte)value & 0x1F) << 11)); }
 
     [Category(Field)]
-    public bool Revive { readonly get => ((Boost0 >> 0) & 1) == 0; set => Boost0 = (byte)((Boost0 & ~(1 << 0)) | ((value ? 1 : 0) << 0)); }
+    public bool Revive { readonly get => ((Boost0 >> 0) & 1) == 1; set => Boost0 = (byte)((Boost0 & ~(1 << 0)) | ((value ? 1 : 0) << 0)); }
 
     [Category(Field)]
     public bool ReviveAll { readonly get => ((Boost0 >> 1) & 1) == 1; set => Boost0 = (byte)((Boost0 & ~(1 << 1)) | ((value ? 1 : 0) << 1)); }

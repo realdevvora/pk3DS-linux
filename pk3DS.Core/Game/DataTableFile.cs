@@ -15,6 +15,7 @@ public enum DataTable
     Move,
     Evolution,
     EggMove,
+    Item,
 }
 
 /// <summary>
@@ -119,6 +120,7 @@ public static class DataTableFile
             DataTable.Move => (MoveColumns(config), config.Moves.Length),
             DataTable.Evolution => (EvolutionColumns(config), config.Evolutions.Length),
             DataTable.EggMove => (EggMoveColumns(config), config.EggMoves.Length),
+            DataTable.Item => (ItemColumns(config), config.Items.Length),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
     }
@@ -132,6 +134,7 @@ public static class DataTableFile
             case DataTable.Move: config.InitializeMoves(); break;
             case DataTable.Evolution: config.InitializeEvos(); break;
             case DataTable.EggMove: config.InitializeEggMoves(); break;
+            case DataTable.Item: config.InitializeItems(); break;
         }
     }
 
@@ -142,6 +145,7 @@ public static class DataTableFile
         DataTable.Move => config.SaveMoves(),
         DataTable.Evolution => config.SaveEvolutions(),
         DataTable.EggMove => config.SaveEggMoves(),
+        DataTable.Item => config.SaveItems(),
         _ => throw new ArgumentOutOfRangeException(nameof(table)),
     };
 
@@ -326,6 +330,74 @@ public static class DataTableFile
         ];
     }
 
+    private static Column[] ItemColumns(GameConfig config)
+    {
+        var t = config.Items;
+        string[] names = config.GetText(TextName.ItemNames);
+
+        // The properties ItemEditor6 shows in its property grid. Packed is covered by natural_gift_type, flag1, flag2 and the two pockets.
+        return
+        [
+            Index(),
+            Text("name", i => names[i]),
+            new("buy_price", i => t[i].BuyPrice.ToString(Invariant), (i, s) =>
+            {
+                int v = ParseNumber(s, 0, ushort.MaxValue * 10);
+                if (v % 10 != 0)
+                    throw new FormatException($"{v} is not a multiple of 10 (prices are stored in tens).");
+                t[i].BuyPrice = v;
+            }),
+            Text("sell_price", i => t[i].SellPrice.ToString(Invariant)),
+            Number("held_effect", i => t[i].HeldEffect, (i, v) => t[i].HeldEffect = (byte)v, 0, 255),
+            Number("held_argument", i => t[i].HeldArgument, (i, v) => t[i].HeldArgument = (byte)v, 0, 255),
+            Number("natural_gift_effect", i => t[i].NaturalGiftEffect, (i, v) => t[i].NaturalGiftEffect = (byte)v, 0, 255),
+            Number("fling_effect", i => t[i].FlingEffect, (i, v) => t[i].FlingEffect = (byte)v, 0, 255),
+            Number("fling_power", i => t[i].FlingPower, (i, v) => t[i].FlingPower = (byte)v, 0, 255),
+            Number("natural_gift_power", i => t[i].NaturalGiftPower, (i, v) => t[i].NaturalGiftPower = (byte)v, 0, 255),
+            Number("natural_gift_type", i => t[i].NaturalGiftType, (i, v) => t[i].NaturalGiftType = v, 0, 0x1F),
+            Flag("flag1", i => t[i].Flag1, (i, v) => t[i].Flag1 = v),
+            Flag("flag2", i => t[i].Flag2, (i, v) => t[i].Flag2 = v),
+            Number("pocket_field", i => t[i].PocketField, (i, v) => t[i].PocketField = v, 0, 0xF),
+            Number("pocket_battle", i => (int)t[i].PocketBattle, (i, v) => t[i].PocketBattle = (BattlePocket)v, 0, 0x1F),
+            Number("effect_field", i => t[i].EffectField, (i, v) => t[i].EffectField = (byte)v, 0, 255),
+            Number("effect_battle", i => t[i].EffectBattle, (i, v) => t[i].EffectBattle = (byte)v, 0, 255),
+            Number("unk_0xc", i => t[i].Unk_0xC, (i, v) => t[i].Unk_0xC = (byte)v, 0, 255),
+            Number("unk_0xd", i => t[i].Unk_0xD, (i, v) => t[i].Unk_0xD = (byte)v, 0, 255),
+            Flag("use_consume", i => t[i].UseConsume, (i, v) => t[i].UseConsume = v),
+            Flag("use_keep", i => t[i].UseKeep, (i, v) => t[i].UseKeep = v),
+            Number("sort_index", i => t[i].SortIndex, (i, v) => t[i].SortIndex = (byte)v, 0, 255),
+            Number("cure_inflict", i => (int)t[i].CureInflict, (i, v) => t[i].CureInflict = (BattleStatusFlags)v, 0, 255),
+            Flag("revive", i => t[i].Revive, (i, v) => t[i].Revive = v),
+            Flag("revive_all", i => t[i].ReviveAll, (i, v) => t[i].ReviveAll = v),
+            Flag("level_up", i => t[i].LevelUp, (i, v) => t[i].LevelUp = v),
+            Flag("evo_stone", i => t[i].EvoStone, (i, v) => t[i].EvoStone = v),
+            Number("boost_atk", i => t[i].BoostATK, (i, v) => t[i].BoostATK = v, 0, 0xF),
+            Number("boost_def", i => t[i].BoostDEF, (i, v) => t[i].BoostDEF = v, 0, 0xF),
+            Number("boost_spa", i => t[i].BoostSPA, (i, v) => t[i].BoostSPA = v, 0, 0xF),
+            Number("boost_spd", i => t[i].BoostSPD, (i, v) => t[i].BoostSPD = v, 0, 0xF),
+            Number("boost_spe", i => t[i].BoostSPE, (i, v) => t[i].BoostSPE = v, 0, 0xF),
+            Number("boost_acc", i => t[i].BoostACC, (i, v) => t[i].BoostACC = v, 0, 0xF),
+            Number("boost_crit", i => t[i].BoostCRIT, (i, v) => t[i].BoostCRIT = v, 0, 3),
+            Number("boost_pp1", i => t[i].BoostPP1, (i, v) => t[i].BoostPP1 = v, 0, 1),
+            Number("boost_pp_max", i => t[i].BoostPPMax, (i, v) => t[i].BoostPPMax = v, 0, 1),
+            Number("function_flags0", i => (int)t[i].FunctionFlags0, (i, v) => t[i].FunctionFlags0 = (ItemFlags1)v, 0, 255),
+            Number("function_flags1", i => (int)t[i].FunctionFlags1, (i, v) => t[i].FunctionFlags1 = (ItemFlags2)v, 0, 255),
+            Number("ev_hp", i => t[i].EVHP, (i, v) => t[i].EVHP = (sbyte)v, sbyte.MinValue, sbyte.MaxValue),
+            Number("ev_atk", i => t[i].EVATK, (i, v) => t[i].EVATK = (sbyte)v, sbyte.MinValue, sbyte.MaxValue),
+            Number("ev_def", i => t[i].EVDEF, (i, v) => t[i].EVDEF = (sbyte)v, sbyte.MinValue, sbyte.MaxValue),
+            Number("ev_spe", i => t[i].EVSPE, (i, v) => t[i].EVSPE = (sbyte)v, sbyte.MinValue, sbyte.MaxValue),
+            Number("ev_spa", i => t[i].EVSPA, (i, v) => t[i].EVSPA = (sbyte)v, sbyte.MinValue, sbyte.MaxValue),
+            Number("ev_spd", i => t[i].EVSPD, (i, v) => t[i].EVSPD = (sbyte)v, sbyte.MinValue, sbyte.MaxValue),
+            Number("heal_amount", i => t[i].HealValue, (i, v) => t[i].HealValue = v, 0, 255),
+            Number("pp_gain", i => t[i].PPGain, (i, v) => t[i].PPGain = (byte)v, 0, 255),
+            Number("friendship1", i => t[i].Friendship1, (i, v) => t[i].Friendship1 = (sbyte)v, sbyte.MinValue, sbyte.MaxValue),
+            Number("friendship2", i => t[i].Friendship2, (i, v) => t[i].Friendship2 = (sbyte)v, sbyte.MinValue, sbyte.MaxValue),
+            Number("friendship3", i => t[i].Friendship3, (i, v) => t[i].Friendship3 = (sbyte)v, sbyte.MinValue, sbyte.MaxValue),
+            Number("_0x23", i => t[i]._0x23, (i, v) => t[i]._0x23 = (byte)v, 0, 255),
+            Number("_0x24", i => t[i]._0x24, (i, v) => t[i]._0x24 = (byte)v, 0, 255),
+        ];
+    }
+
     /// <summary>
     /// Names of the personal table entries as the upstream editors list them (forms as "Species N"), and each entry's form number.
     /// </summary>
@@ -343,6 +415,10 @@ public static class DataTableFile
 
     private static Column Number(string name, Func<int, int> get, Action<int, int> set, int min, int max) =>
         new(name, i => get(i).ToString(Invariant), (i, s) => set(i, ParseNumber(s, min, max)));
+
+    /// <summary>A yes/no value, written as 1 or 0.</summary>
+    private static Column Flag(string name, Func<int, bool> get, Action<int, bool> set) =>
+        new(name, i => get(i) ? "1" : "0", (i, s) => set(i, ParseNumber(s, 0, 1) == 1));
 
     /// <summary>One element of an array property, such as the second type.</summary>
     private static Column Element(string name, Func<int, int[]> get, Action<int, int[]> set, int element, int max) =>

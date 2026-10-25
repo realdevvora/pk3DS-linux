@@ -25,7 +25,7 @@ Each task is one branch and one pull request, verified like the data tables (unc
 ### Phase 1: GARC tables (pattern already proven)
 
 1. **Story text.** *(done)* `storytext` is the same text format as game text, in a different GARC (upstream opens both in the same `TextEditor`). Add `--story` to `text dump` / `text import`. Small. In game: an NPC line.
-2. **Items.** `item` GARC, `Item` struct (`ItemEditor6`). New `DataTable.Item`; `GameConfig.Items` + `SaveItems`. In game: an item's buy price.
+2. **Items.** *(done)* `item` GARC, `Item` struct (`ItemEditor6`). New `DataTable.Item`; `GameConfig.Items` + `SaveItems`. In game: an item's buy price.
 3. **Mega Evolutions.** `megaevo` GARC, `MegaEvolutions` (`MegaEvoEditor6`). New `DataTable.MegaEvo`. In game: hard to see without a Mega Stone; optional.
 4. **Trainers.** `trclass` / `trdata` / `trpoke` GARCs, `TrainerData6` (the save path in `Main.B_Trainer_Click`, the editing in `RSTE`). The team format depends on per-trainer flags (held items, custom moves), so the spreadsheet layout is a decision (see below). In game: a route trainer's team.
 5. **Battle Maison.** `maisontr*` / `maisonpk*` GARCs, `Maison6`. Same layout question as trainers. Low priority.
