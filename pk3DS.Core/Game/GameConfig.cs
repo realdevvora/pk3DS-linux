@@ -116,6 +116,7 @@ public class GameConfig
         InitializeItems();
         InitializeMegaEvolutions();
         InitializeTrainers();
+        InitializeMaison();
         InitializeGameInfo();
     }
 
@@ -165,6 +166,17 @@ public class GameConfig
         Trainers = new TrainerData6[d.Length];
         for (int i = 1; i < d.Length; i++)
             Trainers[i] = new TrainerData6(d[i], p[i], ORAS);
+    }
+
+    /// <summary>Loads the Gen 6 Battle Maison trainers and Pokémon, normal and Super.</summary>
+    public void InitializeMaison()
+    {
+        if (Generation != 6)
+            return;
+        MaisonTrainers = GetGARCData("maisontrN").Files.Select(z => new Maison6.Trainer(z)).ToArray();
+        MaisonPokemon = GetGARCData("maisonpkN").Files.Select(z => new Maison6.Pokemon(z)).ToArray();
+        SuperMaisonTrainers = GetGARCData("maisontrS").Files.Select(z => new Maison6.Trainer(z)).ToArray();
+        SuperMaisonPokemon = GetGARCData("maisonpkS").Files.Select(z => new Maison6.Pokemon(z)).ToArray();
     }
 
     /// <summary>Loads the story text, which <see cref="InitializeAll"/> does not (the upstream story text editor read it on open).</summary>
@@ -345,6 +357,32 @@ public class GameConfig
         return changed;
     }
 
+    public int SaveMaisonTrainers(bool super)
+    {
+        var g = GetGARCData(super ? "maisontrS" : "maisontrN");
+        byte[][] d = g.Files;
+        int changed = WriteChanged(d, super ? SuperMaisonTrainers : MaisonTrainers, z => new Maison6.Trainer(z), z => z.Write());
+        if (changed == 0)
+            return 0;
+        g.Files = d;
+        g.Save();
+        InitializeMaison();
+        return changed;
+    }
+
+    public int SaveMaisonPokemon(bool super)
+    {
+        var g = GetGARCData(super ? "maisonpkS" : "maisonpkN");
+        byte[][] d = g.Files;
+        int changed = WriteChanged(d, super ? SuperMaisonPokemon : MaisonPokemon, z => new Maison6.Pokemon(z), z => z.Write());
+        if (changed == 0)
+            return 0;
+        g.Files = d;
+        g.Save();
+        InitializeMaison();
+        return changed;
+    }
+
     public int SaveGameText() => SaveText(GARCGameText, GameTextStrings, RemapCharacters);
 
     public int SaveStoryText() => SaveText(GARCStoryText, StoryTextStrings, false);
@@ -484,6 +522,10 @@ public class GameConfig
     public Item[] Items { get; private set; }
     public MegaEvolutions[] MegaEvolutions { get; private set; }
     public TrainerData6[] Trainers { get; private set; }
+    public Maison6.Trainer[] MaisonTrainers { get; private set; }
+    public Maison6.Pokemon[] MaisonPokemon { get; private set; }
+    public Maison6.Trainer[] SuperMaisonTrainers { get; private set; }
+    public Maison6.Pokemon[] SuperMaisonPokemon { get; private set; }
 
     public bool XY => Version == GameVersion.XY;
     public bool ORAS => Version is GameVersion.ORAS or GameVersion.ORASDEMO;

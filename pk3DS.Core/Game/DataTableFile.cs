@@ -19,6 +19,10 @@ public enum DataTable
     MegaEvo,
     Trainer,
     TrainerPokemon,
+    MaisonTrainer,
+    MaisonPokemon,
+    SuperMaisonTrainer,
+    SuperMaisonPokemon,
 }
 
 /// <summary>
@@ -157,6 +161,10 @@ public static class DataTableFile
             DataTable.Item => (ItemColumns(config), config.Items.Length),
             DataTable.MegaEvo => (MegaEvoColumns(config), config.MegaEvolutions.Length),
             DataTable.Trainer => (TrainerColumns(config), config.Trainers.Length),
+            DataTable.MaisonTrainer => (MaisonTrainerColumns(config, false), config.MaisonTrainers.Length),
+            DataTable.MaisonPokemon => (MaisonPokemonColumns(config, false), config.MaisonPokemon.Length),
+            DataTable.SuperMaisonTrainer => (MaisonTrainerColumns(config, true), config.SuperMaisonTrainers.Length),
+            DataTable.SuperMaisonPokemon => (MaisonPokemonColumns(config, true), config.SuperMaisonPokemon.Length),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
         return (columns, count, table == DataTable.Trainer ? i => config.Trainers[i] != null : _ => true);
@@ -180,6 +188,7 @@ public static class DataTableFile
             case DataTable.Item: config.InitializeItems(); break;
             case DataTable.MegaEvo: config.InitializeMegaEvolutions(); break;
             case DataTable.Trainer: config.InitializeTrainers(); break;
+            case DataTable.MaisonTrainer or DataTable.MaisonPokemon or DataTable.SuperMaisonTrainer or DataTable.SuperMaisonPokemon: config.InitializeMaison(); break;
         }
     }
 
@@ -193,6 +202,10 @@ public static class DataTableFile
         DataTable.Item => config.SaveItems(),
         DataTable.MegaEvo => config.SaveMegaEvolutions(),
         DataTable.Trainer => config.SaveTrainers(),
+        DataTable.MaisonTrainer => config.SaveMaisonTrainers(false),
+        DataTable.MaisonPokemon => config.SaveMaisonPokemon(false),
+        DataTable.SuperMaisonTrainer => config.SaveMaisonTrainers(true),
+        DataTable.SuperMaisonPokemon => config.SaveMaisonPokemon(true),
         _ => throw new ArgumentOutOfRangeException(nameof(table)),
     };
 
@@ -503,6 +516,63 @@ public static class DataTableFile
             Flag("healer", i => t[i].Healer, (i, v) => t[i].Healer = v),
             Number("money", i => t[i].Money, (i, v) => t[i].Money = (byte)v, 0, 255),
             Number("prize", i => t[i].Prize, (i, v) => t[i].Prize = (ushort)v, 0, maxItem),
+        ];
+    }
+
+    private static Column[] MaisonTrainerColumns(GameConfig config, bool super)
+    {
+        var t = super ? config.SuperMaisonTrainers : config.MaisonTrainers;
+        int poolSize = (super ? config.SuperMaisonPokemon : config.MaisonPokemon).Length;
+        string[] names = config.GetText(super ? TextName.SuperTrainerNames : TextName.MaisonTrainerNames);
+        string[] classes = config.GetText(TextName.TrainerClasses);
+
+        return
+        [
+            Index(),
+            Text("name", i => i < names.Length ? names[i] : null),
+            Number("class", i => t[i].Class, (i, v) => t[i].Class = (ushort)v, 0, classes.Length - 1),
+            Text("class_name", i => classes[t[i].Class]),
+            // Numbers of the Pokémon (rows of the maisonpoke file) the trainer picks from, kept sorted as MaisonEditor6 does.
+            new("choices", i => string.Join(' ', t[i].Choices), (i, s) =>
+            {
+                int[] choices = ParseList(s, 0, poolSize - 1);
+                Array.Sort(choices);
+                t[i].Choices = [.. choices.Select(z => (ushort)z)];
+                t[i].Count = (ushort)choices.Length;
+            }),
+        ];
+    }
+
+    private static Column[] MaisonPokemonColumns(GameConfig config, bool super)
+    {
+        var t = super ? config.SuperMaisonPokemon : config.MaisonPokemon;
+        string[] species = config.GetText(TextName.SpeciesNames);
+        string[] moveNames = config.GetText(TextName.MoveNames);
+        string[] natures = config.GetText(TextName.Natures);
+        string[] items = config.GetText(TextName.ItemNames);
+        int maxMove = config.Info.MaxMoveID;
+
+        // The fields MaisonEditor6 edits; the form (the last two bytes) is kept, as the editor did.
+        return
+        [
+            Index(),
+            Number("species", i => t[i].Species, (i, v) => t[i].Species = (ushort)v, 0, config.MaxSpeciesID),
+            Text("species_name", i => species[t[i].Species]),
+            Number("move1", i => t[i].Move1, (i, v) => t[i].Move1 = v, 0, maxMove),
+            Number("move2", i => t[i].Move2, (i, v) => t[i].Move2 = v, 0, maxMove),
+            Number("move3", i => t[i].Move3, (i, v) => t[i].Move3 = v, 0, maxMove),
+            Number("move4", i => t[i].Move4, (i, v) => t[i].Move4 = v, 0, maxMove),
+            Text("move_names", i => string.Join(", ", t[i].Moves.Where(m => m != 0).Select(m => moveNames[m]))),
+            Flag("ev_hp", i => t[i].HP, (i, v) => t[i].HP = v),
+            Flag("ev_atk", i => t[i].ATK, (i, v) => t[i].ATK = v),
+            Flag("ev_def", i => t[i].DEF, (i, v) => t[i].DEF = v),
+            Flag("ev_spe", i => t[i].SPE, (i, v) => t[i].SPE = v),
+            Flag("ev_spa", i => t[i].SPA, (i, v) => t[i].SPA = v),
+            Flag("ev_spd", i => t[i].SPD, (i, v) => t[i].SPD = v),
+            Number("nature", i => t[i].Nature, (i, v) => t[i].Nature = (byte)v, 0, natures.Length - 1),
+            Text("nature_name", i => natures[t[i].Nature]),
+            Number("item", i => t[i].Item, (i, v) => t[i].Item = (ushort)v, 0, config.Info.MaxItemID),
+            Text("item_name", i => items[t[i].Item]),
         ];
     }
 

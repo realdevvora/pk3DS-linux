@@ -44,6 +44,7 @@ How the changes were checked: the rebuilt RomFS and ExeFS, all 298 GARCs and all
 | `GameConfig.Items`, `InitializeItems`, `SaveItems` | Items were read and saved by `Main` around the item editor | In Core, like the other tables |
 | `GameConfig.MegaEvolutions`, `InitializeMegaEvolutions`, `SaveMegaEvolutions` | Read and saved by `Main` around the Mega Evolution editor | In Core, like the other tables |
 | `GameConfig.Trainers`, `InitializeTrainers`, `SaveTrainers` (Gen 6) | Read and saved by `Main` around `RSTE`; every trainer opened in the editor was rewritten | In Core; only changed trainers are written. Entry 0, a placeholder RSTE never opened, is not loaded. Gen 7 trainers (`TrainerData7`) are not covered yet |
+| `GameConfig.MaisonTrainers` / `MaisonPokemon` / `SuperMaisonTrainers` / `SuperMaisonPokemon`, `InitializeMaison`, `SaveMaisonTrainers` / `SaveMaisonPokemon` (Gen 6) | Read and saved by `Main` around `MaisonEditor6` | In Core; only changed entries are written |
 | `GameConfig.EggMoves` and `InitializeEggMoves`, loaded by `InitializeAll` | Egg moves were only read inside the egg move editor | Loaded like the other tables |
 
 ## Behavior kept as upstream

@@ -190,6 +190,8 @@ public static class Commands
         .. DataCommands("megaevo", DataTable.MegaEvo, "Mega Evolutions (form and Mega Stone)"),
         .. DataCommands("trainer", DataTable.Trainer, "trainer data (class, items, AI, prize; one row per trainer)"),
         .. DataCommands("trainerpoke", DataTable.TrainerPokemon, "trainer teams (one row per team slot)"),
+        .. DataCommands("maisontrainer", DataTable.MaisonTrainer, "Battle Maison trainers and the Pokémon each picks from", DataTable.SuperMaisonTrainer),
+        .. DataCommands("maisonpoke", DataTable.MaisonPokemon, "the Battle Maison Pokémon pool", DataTable.SuperMaisonPokemon),
 
         new("blz", "decode", "<file>...", "Decompress bottom-LZ files in place",
             NoOptions, a => Blz(a, "-d")),
@@ -241,24 +243,25 @@ public static class Commands
             }),
     ];
 
-    private static Command[] DataCommands(string group, DataTable table, string what) =>
+    /// <param name="super">With --super, the table to use instead (the Super Battle Maison); null if the command has no --super</param>
+    private static Command[] DataCommands(string group, DataTable table, string what, DataTable? super = null) =>
     [
-        new(group, "dump", $"{GameOptions.Synopsis} <out.tsv>", $"Write {what} to a tab-separated spreadsheet file",
+        new(group, "dump", $"{GameOptions.Synopsis}{(super == null ? "" : " [--super]")} <out.tsv>", $"Write {what} to a tab-separated spreadsheet file",
             GameOptions.ValueOptions, a =>
             {
                 string[] args = a.Expect(1);
-                a.RejectUnknown(GameOptions.ValueOptions);
-                int count = DataTableFile.Dump(GameOptions.Load(a), table, args[0]);
+                a.RejectUnknown(super == null ? GameOptions.ValueOptions : [.. GameOptions.ValueOptions, "super"]);
+                int count = DataTableFile.Dump(GameOptions.Load(a), a.Has("super") ? super.Value : table, args[0]);
                 Console.WriteLine($"{count} entries");
                 return true;
             }),
 
-        new(group, "import", $"{GameOptions.Synopsis} <in.tsv>", $"Write edited rows of a '{group} dump' file back into the game",
+        new(group, "import", $"{GameOptions.Synopsis}{(super == null ? "" : " [--super]")} <in.tsv>", $"Write edited rows of a '{group} dump' file back into the game",
             GameOptions.ValueOptions, a =>
             {
                 string[] args = a.Expect(1);
-                a.RejectUnknown(GameOptions.ValueOptions);
-                int changed = DataTableFile.Import(GameOptions.Load(a), table, args[0]);
+                a.RejectUnknown(super == null ? GameOptions.ValueOptions : [.. GameOptions.ValueOptions, "super"]);
+                int changed = DataTableFile.Import(GameOptions.Load(a), a.Has("super") ? super.Value : table, args[0]);
                 Console.WriteLine($"{changed} entries changed");
                 return true;
             }),
