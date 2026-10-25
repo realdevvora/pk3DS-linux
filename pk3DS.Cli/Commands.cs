@@ -57,11 +57,16 @@ public static class Commands
                 return ExeFS.UnpackExeFS(exefs, outDir);
             }),
 
-        new("exefs", "pack", "<out.bin> <file>...", "Pack up to 8 files into an ExeFS image",
+        new("exefs", "pack", "<inDir> <out.bin>", "Pack up to 10 files of a folder (in name order) into an ExeFS image",
             NoOptions, a =>
             {
-                string[] args = a.ExpectAtLeast(2);
-                return ExeFS.PackExeFS(args[1..], args[0]);
+                var (inDir, outFile) = Two(a);
+                if (!Directory.Exists(inDir))
+                    throw new DirectoryNotFoundException($"Folder '{inDir}' does not exist.");
+                string[] files = [.. Directory.GetFiles(inDir)
+                    .OrderBy(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(f => Path.GetFileName(f), StringComparer.Ordinal)];
+                return ExeFS.PackExeFS(files, outFile);
             }),
 
         new("garc", "unpack", "<file.garc> <outDir> [--no-decompress]", "Unpack a GARC archive to numbered files (LZSS-compressed entries are written as dec_*.bin)",

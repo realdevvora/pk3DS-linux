@@ -39,7 +39,10 @@ public static class Program
         try
         {
             var parsed = new CommandArgs(args.Skip(2), command.ValueOptions.ToHashSet());
-            return command.Run(parsed) ? Success : Failure;
+            if (command.Run(parsed))
+                return Success;
+            Console.Error.WriteLine($"{command.Group} {command.Name} failed.");
+            return Failure;
         }
         catch (UsageException e)
         {
