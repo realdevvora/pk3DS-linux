@@ -43,7 +43,7 @@ public class CRO(byte[] data)
     internal static string[] VerifyCRR(string PATH_CRR, string PATH_CRO)
     {
         // Get CRO files
-        string[] CROFiles = Directory.GetFiles(PATH_CRO);
+        string[] CROFiles = SortedDirectory.GetFilePaths(PATH_CRO);
 
         // Weed out anything that isn't a .cro
         var cros = new List<string>();
@@ -93,7 +93,7 @@ public class CRO(byte[] data)
     public static bool E_HashCRR(string PATH_CRR, string PATH_CRO, bool saveCRO = true, bool saveCRR = true, IProgressSink progress = null)
     {
         // Get CRO files
-        string[] CROFiles = Directory.GetFiles(PATH_CRO);
+        string[] CROFiles = SortedDirectory.GetFilePaths(PATH_CRO);
 
         // Weed out anything that isn't a .cro
         CROFiles = CROFiles.Where(t => Path.GetExtension(t) == ".cro").ToArray();

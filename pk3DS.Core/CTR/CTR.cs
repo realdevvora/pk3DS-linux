@@ -28,13 +28,24 @@ public static class CTRUtil
         }
 
         // If ExeFS and RomFS are not built, build.
-        if (!File.Exists(EXEFS_PATH) && Directory.Exists(EXEFS_PATH))
+        bool exefsIsTemp = !File.Exists(EXEFS_PATH) && Directory.Exists(EXEFS_PATH);
+        if (exefsIsTemp)
             ExeFS.PackExeFS(SortedDirectory.GetFilePaths(EXEFS_PATH), EXEFS_PATH = "exefs.bin");
         bool romfsIsTemp = !File.Exists(ROMFS_PATH) && Directory.Exists(ROMFS_PATH);
         if (romfsIsTemp)
             RomFS.BuildRomFS(ROMFS_PATH, ROMFS_PATH = "romfs.bin", progress);
 
-        NCCH NCCH = SetNCCH(EXEFS_PATH, ROMFS_PATH, EXHEADER_PATH, SERIAL_TEXT, LOGO_NAME, romfsIsTemp, progress);
+        NCCH NCCH;
+        try
+        {
+            NCCH = SetNCCH(EXEFS_PATH, ROMFS_PATH, EXHEADER_PATH, SERIAL_TEXT, LOGO_NAME, romfsIsTemp, progress);
+        }
+        finally
+        {
+            // The ExeFS is read into memory by SetNCCH, so the packed copy is no longer needed.
+            if (exefsIsTemp)
+                File.Delete(EXEFS_PATH);
+        }
         NCSD NCSD = SetNCSD(NCCH, Card2, progress);
         bool success = WriteROM(NCSD, SAVE_PATH, trimmed, progress);
         return success;
@@ -237,7 +248,7 @@ public static class CTRUtil
                                 BUFFER_SIZE = RomfsLen - j > 0x400000 ? 0x400000 : (uint)(RomfsLen - j);
                                 byte[] buf = new byte[BUFFER_SIZE];
                                 byte[] outbuf = new byte[BUFFER_SIZE];
-                                InFileStream.Read(buf, 0, (int)BUFFER_SIZE);
+                                InFileStream.ReadExactly(buf, 0, (int)BUFFER_SIZE);
                                 aesctr.TransformBlock(buf, 0, (int)BUFFER_SIZE, outbuf, 0);
                                 OutFileStream.Write(outbuf, 0, (int)BUFFER_SIZE);
                                 progress?.Step();

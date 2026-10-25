@@ -14,7 +14,6 @@ public class GARCFile(GARC.MemGARC g, GARCReference r, string p)
     public void Save()
     {
         File.WriteAllBytes(p, g.Data);
-        Console.WriteLine($"Wrote {r.Name} to {r.Reference}");
     }
 }
 

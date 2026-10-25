@@ -41,7 +41,7 @@ public static class Mini
         byte[] data = new byte[4];
         data[0] = (byte)ident[0];
         data[1] = (byte)ident[1];
-        string[] files = Directory.GetFiles(path);
+        string[] files = SortedDirectory.GetFilePaths(path);
         Array.Copy(BitConverter.GetBytes((ushort)files.Length), 0, data, 2, 2);
 
         int count = files.Length;
@@ -131,7 +131,7 @@ public static class Mini
         if (!Directory.Exists(path)) return false;
         try
         {
-            string[] filesToPack = Directory.GetFiles(path);
+            string[] filesToPack = SortedDirectory.GetFilePaths(path);
             byte[][] fileData = new byte[filesToPack.Length][];
             for (int i = 0; i < filesToPack.Length; i++) fileData[i] = File.ReadAllBytes(filesToPack[i]);
             byte[] miniBytes = PackMini(fileData, ident);

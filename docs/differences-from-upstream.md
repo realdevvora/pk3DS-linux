@@ -1,0 +1,37 @@
+# Differences from upstream pk3DS
+
+Base: [kwsch/pk3DS](https://github.com/kwsch/pk3DS) at `6daaca9` ("Update to .NET 10"). Upstream has no newer commits, so there is nothing to merge. Only `pk3DS.Core` was changed; the new `pk3DS.Cli` project is additive, and `pk3DS.WinForms` is untouched.
+
+How the changes were checked: the rebuilt RomFS and ExeFS, all 298 GARCs and all 613 mini containers of a decrypted Omega Ruby dump reproduce the original bytes, and the rebuilt game boots in Lime3DS and on hardware. Upstream itself cannot run on macOS (it needs Windows Forms), so there is no side-by-side run; the original game files serve as the reference.
+
+## Required to remove the UI dependency
+
+| Change | Effect |
+|---|---|
+| `ProgressBar` / `RichTextBox` parameters replaced by an optional `IProgressSink` in `NCCH`, `NCSD`, `RomFS`, `CTRUtil`, `CRO`, `BLZCoder`, `GARC` | Source-incompatible for callers; behavior is the same, and `null` is now safe (before, several methods threw `NullReferenceException` without controls) |
+| `GARC.FileCountDetermined` / `PackProgressed` / `UnpackProgressed` events removed | Replaced by the same sink |
+| `RomFS` constructor takes an optional `isTempFile` | See "output-affecting fixes" |
+| Target `net10.0` instead of `net10.0-windows`; image code (`CTR/Images`, `ETC1`, `SMDH`, `ImageUtil`, `TypeChart`) excluded from the build | Those files are unchanged on disk; they depend on `System.Drawing` and a Windows-only DLL |
+| `Console.WriteLine` removed from `GARCFile.Save` | Library no longer prints on save |
+
+## Fixes that change output or behavior
+
+| Change | Before | After |
+|---|---|---|
+| File and directory enumeration sorted case-insensitively (`SortedDirectory`) in `RomFS`, `ExeFS`, `CTRUtil`, `Mini`, `DARC`, `CRO` | Filesystem order: alphabetical on NTFS, arbitrary on macOS/Linux | Same order NTFS gives, so a built RomFS and ExeFS match the original game's bytes on every OS |
+| `ExeFS` superblock hash covers `0x200` bytes | Hashed the first 200 (decimal) bytes, so the hash field of a rebuilt NCCH header differed from retail | Matches the original header |
+| `BuildROM` deletes the RomFS / ExeFS only if it generated them from a folder | Always deleted the RomFS file it was given, and left a generated `exefs.bin` behind | Caller's files are never deleted; generated ones are cleaned up |
+| `NCSD` extraction copies exactly the first partition | Wrote a temporary CXI ten times too large | Correct size |
+| Extraction opens files with `FileMode.Create` instead of `Append` / `OpenWrite` | Re-extracting into a used folder doubled or left stale bytes in files | Overwrites |
+| `GARC.PackGARC` resets the entry vector per folder entry | A folder entry inherited the previous folder's bits and claimed files it did not contain | Correct vector |
+| `GARC.PackGARC` compresses `dec_*` inputs to temporary files | Deleted the user's `dec_*` file and left a compressed copy in the input folder | Input folder untouched |
+| `GARC.PackGARC` writes folder sub-files in file-number order | Filesystem order | Numeric order |
+| `RomFS.BuildRomFS` uses the full path of its input | A relative input folder made the root entry get a wrong name | Works with relative paths |
+| `LZSS` compress / decompress create the output directory from the full path | Threw for an output name without a directory | Works |
+| `Stream.Read` replaced by `ReadExactly` at seven sites (`CTR`, `LZSS` x2, `RomFS` x3, `SARC`) | A short read silently produced wrong data | Throws `EndOfStreamException` |
+
+## Behavior kept as upstream
+
+- Text encoding trims each line and pads to four bytes; see `docs/ui-deferred.md`.
+- LZSS and BLZ compressors are unchanged (BLZ encoding is slow: about 75 s for a 3 MB `.code.bin`).
+- The remaining items under "Backend issues still open" in `docs/ui-deferred.md`.
