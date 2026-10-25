@@ -203,6 +203,8 @@ public static class Commands
                 return true;
             }),
 
+        .. DataCommands("personal", DataTable.Personal, "species stats, types, abilities, items and TM/tutor flags"),
+
         new("blz", "decode", "<file>...", "Decompress bottom-LZ files in place",
             NoOptions, a => Blz(a, "-d")),
 
@@ -250,6 +252,29 @@ public static class Commands
                 if (!IsLogo(logo))
                     throw new UsageException($"Unknown logo '{logo}'.");
                 return CTRUtil.BuildROM(a.Has("card2"), logo, exefs, romfs, exheader, serial, output, a.Has("trimmed"), new ConsoleProgressSink());
+            }),
+    ];
+
+    private static Command[] DataCommands(string group, DataTable table, string what) =>
+    [
+        new(group, "dump", $"{GameOptions.Synopsis} <out.tsv>", $"Write {what} to a tab-separated spreadsheet file",
+            GameOptions.ValueOptions, a =>
+            {
+                string[] args = a.Expect(1);
+                a.RejectUnknown(GameOptions.ValueOptions);
+                int count = DataTableFile.Dump(GameOptions.Load(a), table, args[0]);
+                Console.WriteLine($"{count} entries");
+                return true;
+            }),
+
+        new(group, "import", $"{GameOptions.Synopsis} <in.tsv>", $"Write edited rows of a '{group} dump' file back into the game",
+            GameOptions.ValueOptions, a =>
+            {
+                string[] args = a.Expect(1);
+                a.RejectUnknown(GameOptions.ValueOptions);
+                int changed = DataTableFile.Import(GameOptions.Load(a), table, args[0]);
+                Console.WriteLine($"{changed} entries changed");
+                return true;
             }),
     ];
 

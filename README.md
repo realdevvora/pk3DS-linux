@@ -47,7 +47,7 @@ Below are some images of how the editor should look when you run it.
 This fork separates pk3DS's file tooling from the Windows UI so it can run on macOS and Linux:
 
 - **`pk3DS.Core`** is a plain `net10.0` class library with no Windows dependency. Long-running operations report through an `IProgressSink` instead of WinForms `ProgressBar` / `RichTextBox` controls, and `null` is accepted. The image code that needs `System.Drawing` is excluded from the build for now.
-- **`pk3DS.Cli`** builds the `pk3ds` command. It covers the game container, archive, compression and hashing operations, plus game text; the rest of the data-editing code (personal data, learnsets, randomizers and so on) is not exposed yet:
+- **`pk3DS.Cli`** builds the `pk3ds` command. It covers the game container, archive, compression and hashing operations, plus game text and species data; the rest of the data-editing code (learnsets, moves, randomizers and so on) is not exposed yet:
 
 | Command | What it does |
 |---|---|
@@ -59,12 +59,15 @@ This fork separates pk3DS's file tooling from the Windows UI so it can run on ma
 | `mini unpack <file> <outDir>` / `mini pack <inDir> <out> --ident XX [--header-size N]` | Unpack or pack a mini container (numbered `0000.bin`, ... files). `unpack` prints the identifier and header size; pass the size back to `pack` to rebuild containers with a padded header exactly |
 | `game info (--dir <dir> \| --romfs <dir> --exefs <dir>)` | Detect the game in an extracted RomFS/ExeFS and print its version and limits |
 | `text dump <outDir>` / `text import <inDir>` (with the same game options) | Write each game text file to `NNNN.txt`, one string per line, and write edited files back into the game text archive |
+| `personal dump <out.tsv>` / `personal import <in.tsv>` (with the same game options) | Write species stats, types, abilities, items and TM/tutor flags to a spreadsheet file (one row per species or form), and write edited rows back. Omega Ruby / Alpha Sapphire only for now |
 | `blz decode\|encode <file>...` | Bottom-LZ (de)compression in place |
 | `lzss compress\|decompress <in> <out>` | LZSS (de)compression |
 | `cro hash <crr> <croDir>` | Recompute CRO hashes and update the CRR |
 | `rom build --exefs --romfs --exheader --serial --out` | Assemble a `.3ds` (fixed-key encrypted, for custom firmware or emulators) |
 
 Game-data commands take `--dir <folder>` (a folder holding the extracted `romfs` and `exefs`), or `--romfs` and `--exefs` separately, and `--lang <0-9>` (2 is English, the default). Text lines may contain bracketed control codes such as `[VAR ...]`; `text import` rejects malformed ones with the file name, skips files whose text you did not change, and trims leading and trailing spaces from each line, as pk3DS always has.
+
+Spreadsheet files (`.tsv`) are tab-separated with a header row and open in Numbers or Excel; the columns are listed in [docs/data-commands-spec.md](docs/data-commands-spec.md). Name columns are only for reading: edit the number columns. `import` checks every row before writing anything, reports errors by line and column, accepts files with only the rows you changed, and writes only entries whose data changed.
 
 Run `pk3ds <group> <command> --help` for a command's arguments. Results go to stdout and progress to stderr; the exit code is 0 on success, 1 on failure and 2 for a usage error. Inputs must be decrypted dumps.
 

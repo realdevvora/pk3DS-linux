@@ -104,7 +104,7 @@ Column names are the Core property names in snake case. Values are shown the way
 **personal** (one row per personal index, 826 rows):
 `index name form hp atk def spe spa spd ev_hp ev_atk ev_def ev_spe ev_spa ev_spd type1 type2 catch_rate evo_stage item1 item2 item3 gender hatch_cycles base_friendship exp_growth egg_group1 egg_group2 ability1 ability2 ability3 escape_rate form_stats_index forme_sprite forme_count color base_exp height weight tmhm type_tutors special_tutors1 special_tutors2 special_tutors3 special_tutors4`
 
-- `form` is the form name from `PersonalTable.GetPersonalEntryList`; it is empty for base species.
+- `name` is the label the upstream editor lists the entry under (`PersonalTable.GetPersonalEntryList`, e.g. `Deoxys 1` for a form), and `form` is the form number (0 for base species). Upstream has no other form names.
 - `form_stats_index` is read-only. Its setter is internal and the upstream editor does not edit it.
 - `height` is in metres and `weight` in kilograms, in the editor's formats (`00.00` and `000.0`). The editor stores `value × 100` and `value × 10`. Showing and reading back two and one decimals is exact, so nothing is rounded. Import rejects more decimals than that.
 - `color` is the value of `PersonalInfo.Color`.

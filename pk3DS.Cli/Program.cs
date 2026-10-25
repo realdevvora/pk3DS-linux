@@ -62,7 +62,7 @@ public static class Program
         Console.Error.WriteLine("Usage: pk3ds <group> <command> [arguments]");
         Console.Error.WriteLine();
         foreach (var c in Commands.All.Where(c => group == null || c.Group == group))
-            Console.Error.WriteLine($"  {c.Group,-5} {c.Name,-10} {c.Summary}");
+            Console.Error.WriteLine($"  {c.Group,-9} {c.Name,-10} {c.Summary}");
         Console.Error.WriteLine();
         Console.Error.WriteLine("Run 'pk3ds <group> <command> --help' for a command's arguments.");
     }
