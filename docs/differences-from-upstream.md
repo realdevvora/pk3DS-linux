@@ -37,6 +37,7 @@ How the changes were checked: the rebuilt RomFS and ExeFS, all 298 GARCs and all
 | `GameConfig.SavePersonal` / `SaveLearnsets` / `SaveMoves` / `SaveEvolutions` / `SaveEggMoves` | The same save steps lived in the WinForms `Main` button handlers, run after each editor closed | Moved into Core with their Gen 6 / Gen 7 branches, so any front end can save |
 | Save writes only entries whose contents changed | Every entry the user had opened was rewritten | Untouched entries keep their original bytes. This matters for egg moves: Omega Ruby stores an empty list as `00 00`, but `EggMoves6.Write()` returns zero bytes (as pk3DS always has, likely the X/Y layout), so rewriting unchanged entries changed 431 files |
 | `SaveEvolutions` reloads the table after saving | `Main` reloaded it before saving, so `Evolutions` held the old data until restart | Reloads after |
+| `GameConfig.SaveGameText` / `SaveStoryText`, `InitializeStoryText` | Text was saved by `Main` (game text) or after the story text editor closed; every file was rewritten | In Core; only files whose text changed are written, as `text import` already did. Story text is loaded on demand, as upstream's editor did |
 | `GameConfig.EggMoves` and `InitializeEggMoves`, loaded by `InitializeAll` | Egg moves were only read inside the egg move editor | Loaded like the other tables |
 
 ## Behavior kept as upstream

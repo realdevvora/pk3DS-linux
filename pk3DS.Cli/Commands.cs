@@ -151,55 +151,33 @@ public static class Commands
                 return true;
             }),
 
-        new("text", "dump", $"{GameOptions.Synopsis} <outDir>", "Write each game text file to <outDir>/NNNN.txt, one line per string",
+        new("text", "dump", $"{GameOptions.Synopsis} [--story] <outDir>", "Write each game text file (or story text file) to <outDir>/NNNN.txt, one line per string",
             GameOptions.ValueOptions, a =>
             {
                 string[] args = a.Expect(1);
-                a.RejectUnknown(GameOptions.ValueOptions);
-                var config = GameOptions.Load(a);
+                a.RejectUnknown([.. GameOptions.ValueOptions, "story"]);
+                string[][] text = GameText(GameOptions.Load(a), a.Has("story")).Text;
                 Directory.CreateDirectory(args[0]);
-                for (int i = 0; i < config.GameTextStrings.Length; i++)
-                {
-                    string text = string.Concat(config.GameTextStrings[i].Select(line => line + "\n"));
-                    File.WriteAllText(Path.Combine(args[0], $"{i:D4}.txt"), text, Utf8);
-                }
-                Console.WriteLine($"{config.GameTextStrings.Length} files");
+                for (int i = 0; i < text.Length; i++)
+                    File.WriteAllText(Path.Combine(args[0], $"{i:D4}.txt"), string.Concat(text[i].Select(line => line + "\n")), Utf8);
+                Console.WriteLine($"{text.Length} files");
                 return true;
             }),
 
-        new("text", "import", $"{GameOptions.Synopsis} <inDir>", "Write NNNN.txt files from <inDir> back into the game text archive",
+        new("text", "import", $"{GameOptions.Synopsis} [--story] <inDir>", "Write NNNN.txt files from <inDir> back into the game text (or story text) archive",
             GameOptions.ValueOptions, a =>
             {
                 string[] args = a.Expect(1);
-                a.RejectUnknown(GameOptions.ValueOptions);
-                var config = GameOptions.Load(a);
-                byte[][] files = config.GARCGameText.Files;
-                int changed = 0;
+                a.RejectUnknown([.. GameOptions.ValueOptions, "story"]);
+                var (text, save) = GameText(GameOptions.Load(a), a.Has("story"));
                 foreach (string path in Directory.GetFiles(args[0], "*.txt"))
                 {
-                    if (!int.TryParse(Path.GetFileNameWithoutExtension(path), out int index) || index < 0 || index >= files.Length)
-                        throw new InvalidDataException($"'{Path.GetFileName(path)}' is not a text file number between 0 and {files.Length - 1}.");
-                    string text = File.ReadAllText(path, Utf8);
-                    string[] lines = text.Length == 0 ? [] : text.EndsWith('\n') ? text[..^1].Split('\n') : throw new InvalidDataException($"'{Path.GetFileName(path)}' must end with a newline.");
-                    // Skip files whose text is unchanged so their original bytes stay as they are.
-                    if (lines.SequenceEqual(config.GameTextStrings[index]))
-                        continue;
-                    try
-                    {
-                        files[index] = TextFile.GetBytes(config, lines, config.RemapCharacters);
-                    }
-                    catch (Exception e)
-                    {
-                        throw new InvalidDataException($"{Path.GetFileName(path)}: {e.Message}", e);
-                    }
-                    changed++;
+                    if (!int.TryParse(Path.GetFileNameWithoutExtension(path), out int index) || index < 0 || index >= text.Length)
+                        throw new InvalidDataException($"'{Path.GetFileName(path)}' is not a text file number between 0 and {text.Length - 1}.");
+                    string content = File.ReadAllText(path, Utf8);
+                    text[index] = content.Length == 0 ? [] : content.EndsWith('\n') ? content[..^1].Split('\n') : throw new InvalidDataException($"'{Path.GetFileName(path)}' must end with a newline.");
                 }
-                if (changed > 0)
-                {
-                    config.GARCGameText.Files = files;
-                    config.GARCGameText.Save();
-                }
-                Console.WriteLine($"{changed} files changed");
+                Console.WriteLine($"{save()} files changed");
                 return true;
             }),
 
@@ -281,6 +259,15 @@ public static class Commands
                 return true;
             }),
     ];
+
+    /// <summary>The loaded game text or story text, and the method that saves it.</summary>
+    private static (string[][] Text, Func<int> Save) GameText(GameConfig config, bool story)
+    {
+        if (!story)
+            return (config.GameTextStrings, config.SaveGameText);
+        config.InitializeStoryText();
+        return (config.StoryTextStrings, config.SaveStoryText);
+    }
 
     private static (string First, string Second) Two(CommandArgs a)
     {

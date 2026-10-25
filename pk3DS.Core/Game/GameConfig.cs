@@ -142,6 +142,13 @@ public class GameConfig
         GameTextStrings = GARCGameText.Files.Select(file => new TextFile(this, file, RemapCharacters).Lines).ToArray();
     }
 
+    /// <summary>Loads the story text, which <see cref="InitializeAll"/> does not (the upstream story text editor read it on open).</summary>
+    public void InitializeStoryText()
+    {
+        GARCStoryText = GetGARCData("storytext");
+        StoryTextStrings = GARCStoryText.Files.Select(file => new TextFile(this, file).Lines).ToArray();
+    }
+
     public void InitializeMoves()
     {
         GARCMoves = GetGARCData("move");
@@ -259,6 +266,36 @@ public class GameConfig
         return changed;
     }
 
+    public int SaveGameText() => SaveText(GARCGameText, GameTextStrings, RemapCharacters);
+
+    public int SaveStoryText() => SaveText(GARCStoryText, StoryTextStrings, false);
+
+    private int SaveText(GARCFile g, string[][] text, bool remapChars)
+    {
+        byte[][] d = g.Files;
+        int changed = 0;
+        for (int i = 0; i < text.Length; i++)
+        {
+            // Unchanged files keep their bytes: the text writer does not reproduce the original line flags (see docs/ui-deferred.md).
+            if (text[i].SequenceEqual(new TextFile(this, d[i], remapChars).Lines))
+                continue;
+            try
+            {
+                d[i] = TextFile.GetBytes(this, text[i], remapChars);
+            }
+            catch (Exception e)
+            {
+                throw new InvalidDataException($"text file {i}: {e.Message}", e);
+            }
+            changed++;
+        }
+        if (changed == 0)
+            return 0;
+        g.Files = d;
+        g.Save();
+        return changed;
+    }
+
     private static int WriteChanged<T>(byte[][] files, T[] entries, Func<byte[], T> read, Func<T, byte[]> write)
     {
         int changed = 0;
@@ -357,10 +394,11 @@ public class GameConfig
 
     public int Language { get; set; }
 
-    public GARCFile GARCPersonal, GARCLearnsets, GARCMoves, GARCGameText;
+    public GARCFile GARCPersonal, GARCLearnsets, GARCMoves, GARCGameText, GARCStoryText;
     public PersonalTable Personal { get; private set; }
     public Learnset[] Learnsets { get; private set; }
     public string[][] GameTextStrings { get; private set; }
+    public string[][] StoryTextStrings { get; private set; }
     public Move[] Moves { get; private set; }
     public EvolutionSet[] Evolutions { get; private set; }
     public EggMoves[] EggMoves { get; private set; }

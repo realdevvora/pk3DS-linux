@@ -58,7 +58,7 @@ This fork separates pk3DS's file tooling from the Windows UI so it can run on ma
 | `garc unpack <file.garc> <outDir>` / `garc pack <inDir> <out.garc> --version 4\|6` | Unpack or pack a GARC archive (version 4 for X/Y and ORAS, 6 for Sun/Moon and later) |
 | `mini unpack <file> <outDir>` / `mini pack <inDir> <out> --ident XX [--header-size N]` | Unpack or pack a mini container (numbered `0000.bin`, ... files). `unpack` prints the identifier and header size; pass the size back to `pack` to rebuild containers with a padded header exactly |
 | `game info (--dir <dir> \| --romfs <dir> --exefs <dir>)` | Detect the game in an extracted RomFS/ExeFS and print its version and limits |
-| `text dump <outDir>` / `text import <inDir>` (with the same game options) | Write each game text file to `NNNN.txt`, one string per line, and write edited files back into the game text archive |
+| `text dump <outDir>` / `text import <inDir>` (with the same game options, plus `--story`) | Write each game text file to `NNNN.txt`, one string per line, and write edited files back into the game text archive. With `--story`, the same for the story text (NPC and event dialogue) |
 | `personal dump <out.tsv>` / `personal import <in.tsv>` (with the same game options) | Write species stats, types, abilities, items and TM/tutor flags to a spreadsheet file (one row per species or form), and write edited rows back. Omega Ruby / Alpha Sapphire only for now |
 | `learnset dump <out.tsv>` / `learnset import <in.tsv>` | The same for level-up moves, written as `level:move` pairs |
 | `move dump <out.tsv>` / `move import <in.tsv>` | The same for move data: type, category, power, accuracy, PP, priority, effects and flags |
