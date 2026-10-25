@@ -24,6 +24,7 @@ public enum DataTable
     SuperMaisonTrainer,
     SuperMaisonPokemon,
     TMHM,
+    Mart,
 }
 
 /// <summary>
@@ -172,6 +173,7 @@ public static class DataTableFile
             DataTable.SuperMaisonTrainer => new(MaisonTrainerColumns(config, true), config.SuperMaisonTrainers.Length, All, () => config.SaveMaisonTrainers(true), config.InitializeMaison),
             DataTable.SuperMaisonPokemon => new(MaisonPokemonColumns(config, true), config.SuperMaisonPokemon.Length, All, () => config.SaveMaisonPokemon(true), config.InitializeMaison),
             DataTable.TMHM => TMHMTable(config),
+            DataTable.Mart => MartTable(config),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
     }
@@ -579,6 +581,40 @@ public static class DataTableFile
         }
         // Edits only live in the local list until Save, so there is nothing to discard.
         return new(columns, moves.Length, _ => true, Save, () => { });
+    }
+
+    /// <summary>The Poké Mart inventories, edited in code.bin. Each mart keeps its number of item slots.</summary>
+    private static Table MartTable(GameConfig config)
+    {
+        var code = CodeBin.Load(config.ExeFS);
+        var mart = new Mart6(code, config.ORAS);
+        ushort[][] items = [.. mart.Items.Select(z => (ushort[])z.Clone())];
+        string[] locations = config.ORAS ? Mart6.LocationsORAS : Mart6.LocationsXY;
+        string[] itemNames = config.GetText(TextName.ItemNames);
+        int maxItem = config.Info.MaxItemID;
+
+        Column[] columns =
+        [
+            Index(),
+            Text("location", i => locations[i]),
+            new("items", i => string.Join(' ', items[i]), (i, s) =>
+            {
+                int[] list = ParseList(s, 0, maxItem);
+                if (list.Length != items[i].Length)
+                    throw new FormatException($"this mart has {items[i].Length} item slots, but {list.Length} items are listed.");
+                items[i] = [.. list.Select(z => (ushort)z)];
+            }),
+            Text("item_names", i => string.Join(", ", items[i].Select(z => itemNames[z]))),
+        ];
+        int Save()
+        {
+            int changed = items.Where((z, i) => !z.SequenceEqual(mart.Items[i])).Count();
+            items.CopyTo(mart.Items, 0);
+            mart.Write(code);
+            code.Save();
+            return changed;
+        }
+        return new(columns, items.Length, _ => true, Save, () => { });
     }
 
     /// <summary>

@@ -137,6 +137,8 @@ Column names are the Core property names in snake case. Values are shown the way
 
 **tmhm** (107 rows): `index name move move_name`, TM01-TM100 then HM01-HM07. When a TM's or HM's move changes, the move's description is copied into the TM/HM item's description and the game text is saved, as `TMHMEditor6` intended (it rewrote all of them; only changed ones here).
 
+**mart** (24 rows): `index location items item_names`. `location` is the editor's name for the mart. `items` must list as many items as the mart has slots, because the slots are fixed in the executable.
+
 ## Verification
 
 For each table, before it is committed:
