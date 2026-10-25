@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using pk3DS.Core.Structures;
 
 namespace pk3DS.Core;
 
@@ -11,6 +12,7 @@ public enum DataTable
 {
     Personal,
     Learnset,
+    Move,
 }
 
 /// <summary>
@@ -112,6 +114,7 @@ public static class DataTableFile
         {
             DataTable.Personal => (PersonalColumns(config), config.Personal.Table.Length),
             DataTable.Learnset => (LearnsetColumns(config), config.Learnsets.Length),
+            DataTable.Move => (MoveColumns(config), config.Moves.Length),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
     }
@@ -122,6 +125,7 @@ public static class DataTableFile
         {
             case DataTable.Personal: config.InitializePersonal(); break;
             case DataTable.Learnset: config.InitializeLearnset(); break;
+            case DataTable.Move: config.InitializeMoves(); break;
         }
     }
 
@@ -129,6 +133,7 @@ public static class DataTableFile
     {
         DataTable.Personal => config.SavePersonal(),
         DataTable.Learnset => config.SaveLearnsets(),
+        DataTable.Move => config.SaveMoves(),
         _ => throw new ArgumentOutOfRangeException(nameof(table)),
     };
 
@@ -219,6 +224,56 @@ public static class DataTableFile
         ];
     }
 
+    private static Column[] MoveColumns(GameConfig config)
+    {
+        var t = config.Moves.Cast<Move6>().ToArray();
+        string[] names = config.GetText(TextName.MoveNames);
+        int maxType = config.GetText(TextName.Types).Length - 1;
+
+        // Signed where MoveEditor6 reads the byte as signed: priority, recoil, stat stages and the inflicted condition (-1 is "Special").
+        return
+        [
+            Index(),
+            Text("name", i => names[i]),
+            Number("type", i => t[i].Type, (i, v) => t[i].Type = v, 0, maxType),
+            Number("quality", i => t[i].Quality, (i, v) => t[i].Quality = v, 0, 255),
+            Number("category", i => t[i].Category, (i, v) => t[i].Category = v, 0, 255),
+            Number("power", i => t[i].Power, (i, v) => t[i].Power = v, 0, 255),
+            Number("accuracy", i => t[i].Accuracy, (i, v) => t[i].Accuracy = v, 0, 255),
+            Number("pp", i => t[i].PP, (i, v) => t[i].PP = v, 0, 255),
+            Number("priority", i => (sbyte)t[i].Priority, (i, v) => t[i].Priority = v, sbyte.MinValue, sbyte.MaxValue),
+            Number("hit_min", i => t[i].HitMin, (i, v) => t[i].HitMin = v, 0, 15),
+            Number("hit_max", i => t[i].HitMax, (i, v) => t[i].HitMax = v, 0, 15),
+            Number("inflict", i => (short)t[i].Inflict, (i, v) => t[i].Inflict = v, short.MinValue, short.MaxValue),
+            Number("inflict_percent", i => t[i].InflictPercent, (i, v) => t[i].InflictPercent = v, 0, 255),
+            Number("inflict_count", i => (int)t[i].InflictCount, (i, v) => t[i].InflictCount = (MoveInflictDuration)v, 0, 255),
+            Number("turn_min", i => t[i].TurnMin, (i, v) => t[i].TurnMin = v, 0, 255),
+            Number("turn_max", i => t[i].TurnMax, (i, v) => t[i].TurnMax = v, 0, 255),
+            Number("crit_stage", i => t[i].CritStage, (i, v) => t[i].CritStage = v, 0, 255),
+            Number("flinch", i => t[i].Flinch, (i, v) => t[i].Flinch = v, 0, 255),
+            Number("effect_sequence", i => t[i].EffectSequence, (i, v) => t[i].EffectSequence = v, 0, ushort.MaxValue),
+            Number("recoil", i => (sbyte)t[i].Recoil, (i, v) => t[i].Recoil = v, sbyte.MinValue, sbyte.MaxValue),
+            Number("healing", i => (int)t[i].Healing, (i, v) => t[i].Healing = (Heal)v, 0, 255),
+            Number("target", i => (int)t[i].Target, (i, v) => t[i].Target = (MoveTarget)v, 0, 255),
+            Number("stat1", i => t[i].Stat1, (i, v) => t[i].Stat1 = v, 0, 255),
+            Number("stat2", i => t[i].Stat2, (i, v) => t[i].Stat2 = v, 0, 255),
+            Number("stat3", i => t[i].Stat3, (i, v) => t[i].Stat3 = v, 0, 255),
+            Number("stat1_stage", i => (sbyte)t[i].Stat1Stage, (i, v) => t[i].Stat1Stage = v, sbyte.MinValue, sbyte.MaxValue),
+            Number("stat2_stage", i => (sbyte)t[i].Stat2Stage, (i, v) => t[i].Stat2Stage = v, sbyte.MinValue, sbyte.MaxValue),
+            Number("stat3_stage", i => (sbyte)t[i].Stat3Stage, (i, v) => t[i].Stat3Stage = v, sbyte.MinValue, sbyte.MaxValue),
+            Number("stat1_percent", i => t[i].Stat1Percent, (i, v) => t[i].Stat1Percent = v, 0, 255),
+            Number("stat2_percent", i => t[i].Stat2Percent, (i, v) => t[i].Stat2Percent = v, 0, 255),
+            Number("stat3_percent", i => t[i].Stat3Percent, (i, v) => t[i].Stat3Percent = v, 0, 255),
+            new("flags", i => string.Join(' ', Enumerable.Range(0, 32).Where(n => (((uint)t[i].Flags >> n) & 1) != 0)), (i, s) =>
+            {
+                int[] set = ParseList(s, 0, 31);
+                if (set.Distinct().Count() != set.Length)
+                    throw new FormatException($"'{s}' lists a flag more than once.");
+                t[i].Flags = (MoveFlag6)set.Aggregate(0u, (f, n) => f | 1u << n);
+            }),
+        ];
+    }
+
     /// <summary>
     /// Names of the personal table entries as the upstream editors list them (forms as "Species N"), and each entry's form number.
     /// </summary>
@@ -278,7 +333,7 @@ public static class DataTableFile
         if (!int.TryParse(s, NumberStyles.AllowLeadingSign, Invariant, out int v))
             throw new FormatException($"'{s}' is not a whole number.");
         if (v < min || v > max)
-            throw new FormatException($"{v} is outside {min}-{max}.");
+            throw new FormatException($"{v} is not between {min} and {max}.");
         return v;
     }
 

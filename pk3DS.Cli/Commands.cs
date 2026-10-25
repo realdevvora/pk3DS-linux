@@ -205,6 +205,7 @@ public static class Commands
 
         .. DataCommands("personal", DataTable.Personal, "species stats, types, abilities, items and TM/tutor flags"),
         .. DataCommands("learnset", DataTable.Learnset, "level-up moves"),
+        .. DataCommands("move", DataTable.Move, "move data (type, power, accuracy, PP, effects, flags)"),
 
         new("blz", "decode", "<file>...", "Decompress bottom-LZ files in place",
             NoOptions, a => Blz(a, "-d")),

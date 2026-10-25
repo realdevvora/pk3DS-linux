@@ -120,7 +120,7 @@ Column names are the Core property names in snake case. Values are shown the way
 - Each `evoN` is `method:argument:species`, for the 8 slots of the editor. `0:0:0` is an empty slot. `method` is 0–34, as in the editor. `argument` is not range-checked because its meaning depends on the method (level, item, move, species, ...).
 
 **move** (622 rows): `index name type quality category power accuracy pp priority hit_min hit_max inflict inflict_percent inflict_count turn_min turn_max crit_stage flinch effect_sequence recoil healing target stat1 stat2 stat3 stat1_stage stat2_stage stat3_stage stat1_percent stat2_percent stat3_percent flags`
-- Signed exactly where the editor reads a signed value: `priority`, `recoil` and `statN_stage` are −128 to 127, and `inflict` is −1 for none (the editor reads it as a signed 16-bit value).
+- Signed exactly where the editor reads a signed value: `priority`, `recoil` and `statN_stage` are −128 to 127, and `inflict` is a signed 16-bit value, where −1 is what the editor lists as "Special".
 - `flags` lists the indexes of the checked flag boxes (`0 1 4`), the same way `tmhm` does.
 
 ## Verification
