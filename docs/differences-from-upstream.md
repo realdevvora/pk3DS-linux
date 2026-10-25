@@ -30,6 +30,15 @@ How the changes were checked: the rebuilt RomFS and ExeFS, all 298 GARCs and all
 | `LZSS` compress / decompress create the output directory from the full path | Threw for an output name without a directory | Works |
 | `Stream.Read` replaced by `ReadExactly` at seven sites (`CTR`, `LZSS` x2, `RomFS` x3, `SARC`) | A short read silently produced wrong data | Throws `EndOfStreamException` |
 
+## Added for the game data commands
+
+| Change | Upstream | Here |
+|---|---|---|
+| `GameConfig.SavePersonal` / `SaveLearnsets` / `SaveMoves` / `SaveEvolutions` / `SaveEggMoves` | The same save steps lived in the WinForms `Main` button handlers, run after each editor closed | Moved into Core with their Gen 6 / Gen 7 branches, so any front end can save |
+| Save writes only entries whose contents changed | Every entry the user had opened was rewritten | Untouched entries keep their original bytes. This matters for egg moves: Omega Ruby stores an empty list as `00 00`, but `EggMoves6.Write()` returns zero bytes (as pk3DS always has, likely the X/Y layout), so rewriting unchanged entries changed 431 files |
+| `SaveEvolutions` reloads the table after saving | `Main` reloaded it before saving, so `Evolutions` held the old data until restart | Reloads after |
+| `GameConfig.EggMoves` and `InitializeEggMoves`, loaded by `InitializeAll` | Egg moves were only read inside the egg move editor | Loaded like the other tables |
+
 ## Behavior kept as upstream
 
 - Text encoding trims each line and pads to four bytes; see `docs/ui-deferred.md`.

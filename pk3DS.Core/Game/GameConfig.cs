@@ -112,6 +112,7 @@ public class GameConfig
         InitializeGameText();
         InitializeMoves();
         InitializeEvos();
+        InitializeEggMoves();
         InitializeGameInfo();
     }
 
@@ -170,6 +171,108 @@ public class GameConfig
                 Evolutions = d.Select(z => new EvolutionSet7(z)).ToArray();
                 break;
         }
+    }
+
+    public void InitializeEggMoves()
+    {
+        var g = GetGARCData("eggmove");
+        switch (Generation)
+        {
+            case 6:
+                EggMoves = EggMoves6.GetArray(g.Files);
+                break;
+            case 7:
+                EggMoves = EggMoves7.GetArray(g.Files);
+                break;
+        }
+    }
+
+    // The Save methods write a table held above back to its GARC, as the pk3DS.WinForms editors did when closed.
+    // Only entries whose contents changed are written; the rest keep their original bytes. Each returns how many it wrote.
+
+    public int SavePersonal()
+    {
+        byte[][] d = GARCPersonal.Files;
+        int changed = WriteChanged(d, Personal.Table, z => new PersonalTable(z, Version).Table[0], z => z.Write());
+        if (changed == 0)
+            return 0;
+        // Set Master Table back
+        for (int i = 0; i < d.Length - 1; i++)
+            d[i].CopyTo(d[^1], i * d[i].Length);
+        GARCPersonal.Files = d;
+        GARCPersonal.Save();
+        InitializePersonal();
+        return changed;
+    }
+
+    public int SaveLearnsets()
+    {
+        byte[][] d = GARCLearnsets.Files;
+        int changed = WriteChanged(d, Learnsets, z => new Learnset6(z), z => z.Write());
+        if (changed == 0)
+            return 0;
+        GARCLearnsets.Files = d;
+        GARCLearnsets.Save();
+        InitializeLearnset();
+        return changed;
+    }
+
+    public int SaveMoves()
+    {
+        bool isMini = ORAS || Generation == 7;
+        byte[][] d = isMini ? Mini.UnpackMini(GARCMoves.GetFile(0), "WD") : GARCMoves.Files;
+        Func<byte[], Move> read = Generation == 7 ? z => new Move7(z) : z => new Move6(z);
+        int changed = WriteChanged(d, Moves, read, z => z.Write());
+        if (changed == 0)
+            return 0;
+        GARCMoves.Files = isMini ? [Mini.PackMini(d, "WD")] : d;
+        GARCMoves.Save();
+        InitializeMoves();
+        return changed;
+    }
+
+    public int SaveEvolutions()
+    {
+        var g = GetGARCData("evolution");
+        byte[][] d = g.Files;
+        Func<byte[], EvolutionSet> read = Generation == 7 ? z => new EvolutionSet7(z) : z => new EvolutionSet6(z);
+        int changed = WriteChanged(d, Evolutions, read, z => z.Write());
+        if (changed == 0)
+            return 0;
+        g.Files = d;
+        g.Save();
+        InitializeEvos();
+        return changed;
+    }
+
+    public int SaveEggMoves()
+    {
+        var g = GetGARCData("eggmove");
+        byte[][] d = g.Files;
+        Func<byte[], EggMoves> read = Generation == 7 ? z => new EggMoves7(z) : z => new EggMoves6(z);
+        int changed = WriteChanged(d, EggMoves, read, z => z.Write());
+        if (changed == 0)
+            return 0;
+        g.Files = d;
+        g.Save();
+        InitializeEggMoves();
+        return changed;
+    }
+
+    private static int WriteChanged<T>(byte[][] files, T[] entries, Func<byte[], T> read, Func<T, byte[]> write)
+    {
+        int changed = 0;
+        for (int i = 0; i < entries.Length; i++)
+        {
+            byte[] data = write(entries[i]);
+            // Compare with the original passed through the same writer: an entry the writer stores differently
+            // than the game does (an empty Gen 6 egg move list) is then only written if its contents changed.
+            if (data.AsSpan().SequenceEqual(write(read(files[i]))))
+                continue;
+            files[i] = data;
+            changed++;
+        }
+        return changed;
     }
 
     private void InitializeGameInfo()
@@ -260,6 +363,7 @@ public class GameConfig
     public string[][] GameTextStrings { get; private set; }
     public Move[] Moves { get; private set; }
     public EvolutionSet[] Evolutions { get; private set; }
+    public EggMoves[] EggMoves { get; private set; }
 
     public bool XY => Version == GameVersion.XY;
     public bool ORAS => Version is GameVersion.ORAS or GameVersion.ORASDEMO;
