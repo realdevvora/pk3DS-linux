@@ -45,9 +45,9 @@ public static class DataTableFile
     {
         if (table == DataTable.TrainerPokemon)
             return DumpTeams(config, path);
-        var (columns, count, exists) = GetColumns(config, table);
-        int[] rows = [.. Enumerable.Range(0, count).Where(exists)];
-        WriteRows(path, columns, rows.Length, r => rows[r]);
+        var t = GetTable(config, table);
+        int[] rows = [.. Enumerable.Range(0, t.Count).Where(t.Exists)];
+        WriteRows(path, t.Columns, rows.Length, r => rows[r]);
         return rows.Length;
     }
 
@@ -68,29 +68,29 @@ public static class DataTableFile
     {
         if (table == DataTable.TrainerPokemon)
             return ImportTeams(config, path);
-        var (columns, count, exists) = GetColumns(config, table);
+        var t = GetTable(config, table);
         string file = Path.GetFileName(path);
-        var rows = ReadRows(path, columns);
+        var rows = ReadRows(path, t.Columns);
 
         try
         {
             var seen = new HashSet<int>();
             foreach (var (line, cells) in rows)
             {
-                if (!int.TryParse(cells[0], NumberStyles.None, Invariant, out int index) || index >= count || !exists(index))
+                if (!int.TryParse(cells[0], NumberStyles.None, Invariant, out int index) || index >= t.Count || !t.Exists(index))
                     throw new InvalidDataException($"{file}:{line}: index: '{cells[0]}' is not the number of an entry.");
                 if (!seen.Add(index))
                     throw new InvalidDataException($"{file}:{line}: index: {index} appears more than once.");
-                ApplyRow(file, line, columns, cells, index, 1);
+                ApplyRow(file, line, t.Columns, cells, index, 1);
             }
         }
         catch
         {
             // Drop the rows applied so far, so the loaded table matches the files again.
-            Reload(config, table);
+            t.Reload();
             throw;
         }
-        return Save(config, table);
+        return t.Save();
     }
 
     /// <summary>Reads the data rows of a file, after checking its header and the number of cells in each row.</summary>
@@ -147,27 +147,31 @@ public static class DataTableFile
         }
     }
 
-    /// <returns>The columns, the number of entries, and which of them exist (trainer 0 is a placeholder)</returns>
-    private static (Column[] Columns, int Count, Func<int, bool> Exists) GetColumns(GameConfig config, DataTable table)
+    /// <summary>A table's columns and entry count, which entries exist (trainer 0 is a placeholder), and how to save or discard edits.</summary>
+    /// <param name="Save">Writes the edited entries and returns how many changed</param>
+    /// <param name="Reload">Discards edits applied to the loaded entries</param>
+    private sealed record Table(Column[] Columns, int Count, Func<int, bool> Exists, Func<int> Save, Action Reload);
+
+    private static Table GetTable(GameConfig config, DataTable table)
     {
         RequireORAS(config);
-        var (columns, count) = table switch
+        static bool All(int _) => true;
+        return table switch
         {
-            DataTable.Personal => (PersonalColumns(config), config.Personal.Table.Length),
-            DataTable.Learnset => (LearnsetColumns(config), config.Learnsets.Length),
-            DataTable.Move => (MoveColumns(config), config.Moves.Length),
-            DataTable.Evolution => (EvolutionColumns(config), config.Evolutions.Length),
-            DataTable.EggMove => (EggMoveColumns(config), config.EggMoves.Length),
-            DataTable.Item => (ItemColumns(config), config.Items.Length),
-            DataTable.MegaEvo => (MegaEvoColumns(config), config.MegaEvolutions.Length),
-            DataTable.Trainer => (TrainerColumns(config), config.Trainers.Length),
-            DataTable.MaisonTrainer => (MaisonTrainerColumns(config, false), config.MaisonTrainers.Length),
-            DataTable.MaisonPokemon => (MaisonPokemonColumns(config, false), config.MaisonPokemon.Length),
-            DataTable.SuperMaisonTrainer => (MaisonTrainerColumns(config, true), config.SuperMaisonTrainers.Length),
-            DataTable.SuperMaisonPokemon => (MaisonPokemonColumns(config, true), config.SuperMaisonPokemon.Length),
+            DataTable.Personal => new(PersonalColumns(config), config.Personal.Table.Length, All, config.SavePersonal, config.InitializePersonal),
+            DataTable.Learnset => new(LearnsetColumns(config), config.Learnsets.Length, All, config.SaveLearnsets, config.InitializeLearnset),
+            DataTable.Move => new(MoveColumns(config), config.Moves.Length, All, config.SaveMoves, config.InitializeMoves),
+            DataTable.Evolution => new(EvolutionColumns(config), config.Evolutions.Length, All, config.SaveEvolutions, config.InitializeEvos),
+            DataTable.EggMove => new(EggMoveColumns(config), config.EggMoves.Length, All, config.SaveEggMoves, config.InitializeEggMoves),
+            DataTable.Item => new(ItemColumns(config), config.Items.Length, All, config.SaveItems, config.InitializeItems),
+            DataTable.MegaEvo => new(MegaEvoColumns(config), config.MegaEvolutions.Length, All, config.SaveMegaEvolutions, config.InitializeMegaEvolutions),
+            DataTable.Trainer => new(TrainerColumns(config), config.Trainers.Length, i => config.Trainers[i] != null, config.SaveTrainers, config.InitializeTrainers),
+            DataTable.MaisonTrainer => new(MaisonTrainerColumns(config, false), config.MaisonTrainers.Length, All, () => config.SaveMaisonTrainers(false), config.InitializeMaison),
+            DataTable.MaisonPokemon => new(MaisonPokemonColumns(config, false), config.MaisonPokemon.Length, All, () => config.SaveMaisonPokemon(false), config.InitializeMaison),
+            DataTable.SuperMaisonTrainer => new(MaisonTrainerColumns(config, true), config.SuperMaisonTrainers.Length, All, () => config.SaveMaisonTrainers(true), config.InitializeMaison),
+            DataTable.SuperMaisonPokemon => new(MaisonPokemonColumns(config, true), config.SuperMaisonPokemon.Length, All, () => config.SaveMaisonPokemon(true), config.InitializeMaison),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
-        return (columns, count, table == DataTable.Trainer ? i => config.Trainers[i] != null : _ => true);
     }
 
     private static void RequireORAS(GameConfig config)
@@ -175,39 +179,6 @@ public static class DataTableFile
         if (!config.ORAS)
             throw new NotSupportedException("Data tables are only supported for Omega Ruby / Alpha Sapphire so far.");
     }
-
-    private static void Reload(GameConfig config, DataTable table)
-    {
-        switch (table)
-        {
-            case DataTable.Personal: config.InitializePersonal(); break;
-            case DataTable.Learnset: config.InitializeLearnset(); break;
-            case DataTable.Move: config.InitializeMoves(); break;
-            case DataTable.Evolution: config.InitializeEvos(); break;
-            case DataTable.EggMove: config.InitializeEggMoves(); break;
-            case DataTable.Item: config.InitializeItems(); break;
-            case DataTable.MegaEvo: config.InitializeMegaEvolutions(); break;
-            case DataTable.Trainer: config.InitializeTrainers(); break;
-            case DataTable.MaisonTrainer or DataTable.MaisonPokemon or DataTable.SuperMaisonTrainer or DataTable.SuperMaisonPokemon: config.InitializeMaison(); break;
-        }
-    }
-
-    private static int Save(GameConfig config, DataTable table) => table switch
-    {
-        DataTable.Personal => config.SavePersonal(),
-        DataTable.Learnset => config.SaveLearnsets(),
-        DataTable.Move => config.SaveMoves(),
-        DataTable.Evolution => config.SaveEvolutions(),
-        DataTable.EggMove => config.SaveEggMoves(),
-        DataTable.Item => config.SaveItems(),
-        DataTable.MegaEvo => config.SaveMegaEvolutions(),
-        DataTable.Trainer => config.SaveTrainers(),
-        DataTable.MaisonTrainer => config.SaveMaisonTrainers(false),
-        DataTable.MaisonPokemon => config.SaveMaisonPokemon(false),
-        DataTable.SuperMaisonTrainer => config.SaveMaisonTrainers(true),
-        DataTable.SuperMaisonPokemon => config.SaveMaisonPokemon(true),
-        _ => throw new ArgumentOutOfRangeException(nameof(table)),
-    };
 
     private static Column[] PersonalColumns(GameConfig config)
     {
