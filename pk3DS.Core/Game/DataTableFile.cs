@@ -13,6 +13,7 @@ public enum DataTable
     Personal,
     Learnset,
     Move,
+    Evolution,
 }
 
 /// <summary>
@@ -115,6 +116,7 @@ public static class DataTableFile
             DataTable.Personal => (PersonalColumns(config), config.Personal.Table.Length),
             DataTable.Learnset => (LearnsetColumns(config), config.Learnsets.Length),
             DataTable.Move => (MoveColumns(config), config.Moves.Length),
+            DataTable.Evolution => (EvolutionColumns(config), config.Evolutions.Length),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
     }
@@ -126,6 +128,7 @@ public static class DataTableFile
             case DataTable.Personal: config.InitializePersonal(); break;
             case DataTable.Learnset: config.InitializeLearnset(); break;
             case DataTable.Move: config.InitializeMoves(); break;
+            case DataTable.Evolution: config.InitializeEvos(); break;
         }
     }
 
@@ -134,6 +137,7 @@ public static class DataTableFile
         DataTable.Personal => config.SavePersonal(),
         DataTable.Learnset => config.SaveLearnsets(),
         DataTable.Move => config.SaveMoves(),
+        DataTable.Evolution => config.SaveEvolutions(),
         _ => throw new ArgumentOutOfRangeException(nameof(table)),
     };
 
@@ -272,6 +276,33 @@ public static class DataTableFile
                 t[i].Flags = (MoveFlag6)set.Aggregate(0u, (f, n) => f | 1u << n);
             }),
         ];
+    }
+
+    private static Column[] EvolutionColumns(GameConfig config)
+    {
+        var t = config.Evolutions;
+        var (names, forms) = EntryNames(config);
+        string[] species = config.GetText(TextName.SpeciesNames);
+        // Methods as listed by EvolutionEditor6; the argument's meaning depends on the method (level, item, move, species, ...).
+        const int maxMethod = 34;
+
+        var columns = new List<Column> { Index(), Text("name", i => names[i]), Text("form", i => forms[i].ToString(Invariant)) };
+        for (int slot = 0; slot < t[0].PossibleEvolutions.Length; slot++)
+        {
+            int k = slot;
+            columns.Add(new($"evo{k + 1}", i => $"{t[i].PossibleEvolutions[k].Method}:{t[i].PossibleEvolutions[k].Argument}:{t[i].PossibleEvolutions[k].Species}", (i, s) =>
+            {
+                string[] parts = s.Split(':');
+                if (parts.Length != 3)
+                    throw new FormatException($"'{s}' is not method:argument:species.");
+                var evo = t[i].PossibleEvolutions[k];
+                evo.Method = ParseNumber(parts[0], 0, maxMethod);
+                evo.Argument = ParseNumber(parts[1], 0, ushort.MaxValue);
+                evo.Species = ParseNumber(parts[2], 0, config.MaxSpeciesID);
+            }));
+        }
+        columns.Add(Text("evo_names", i => string.Join(", ", t[i].PossibleEvolutions.Where(e => e.Method != 0).Select(e => species[e.Species]))));
+        return [.. columns];
     }
 
     /// <summary>
