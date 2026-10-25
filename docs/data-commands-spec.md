@@ -125,6 +125,8 @@ Column names are the Core property names in snake case. Values are shown the way
 
 **item** (776 rows): the properties `ItemEditor6` shows in its property grid, in snake case (`buy_price`, `held_effect`, ..., `_0x23`, `_0x24`). `buy_price` must be a multiple of 10 (it is stored divided by 10). `sell_price` is read-only, as in the editor. Yes/no fields are `0` or `1`. The raw `Packed` value is not a column, because `natural_gift_type`, `flag1`, `flag2`, `pocket_field` and `pocket_battle` cover all of its bits.
 
+**megaevo** (826 rows): `index name form mega1 mega2 mega3 mega_names`. Each `megaN` is `form:method:argument`, the three slots of `MegaEvoEditor6`. Method 1 means holding the item given as `argument` (checked against the item list), and method 2 is Rayquaza's. A slot with method 0 is written with form and argument 0, as `MegaEvolutions.Write()` always has. The fourth field of each slot (`u6`, always 0) is not a column and is kept.
+
 ## Verification
 
 For each table, before it is committed:

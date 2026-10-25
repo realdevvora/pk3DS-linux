@@ -42,6 +42,7 @@ How the changes were checked: the rebuilt RomFS and ExeFS, all 298 GARCs and all
 | `Item.NaturalGiftType` setter | Rebuilt the packed field from `NaturalGiftEffect`, wiping the flags and pockets | Changes only the type bits |
 | `Item.PocketBattle` setter | Masked with `0x077F`, clearing the lowest bit of the field pocket (Potion moved from pocket 1 to 0) | Masks with `0x07FF` |
 | `GameConfig.Items`, `InitializeItems`, `SaveItems` | Items were read and saved by `Main` around the item editor | In Core, like the other tables |
+| `GameConfig.MegaEvolutions`, `InitializeMegaEvolutions`, `SaveMegaEvolutions` | Read and saved by `Main` around the Mega Evolution editor | In Core, like the other tables |
 | `GameConfig.EggMoves` and `InitializeEggMoves`, loaded by `InitializeAll` | Egg moves were only read inside the egg move editor | Loaded like the other tables |
 
 ## Behavior kept as upstream

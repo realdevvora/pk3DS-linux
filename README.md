@@ -47,7 +47,7 @@ Below are some images of how the editor should look when you run it.
 This fork separates pk3DS's file tooling from the Windows UI so it can run on macOS and Linux:
 
 - **`pk3DS.Core`** is a plain `net10.0` class library with no Windows dependency. Long-running operations report through an `IProgressSink` instead of WinForms `ProgressBar` / `RichTextBox` controls, and `null` is accepted. The image code that needs `System.Drawing` is excluded from the build for now.
-- **`pk3DS.Cli`** builds the `pk3ds` command. It covers the game container, archive, compression and hashing operations, plus game text and the species, level-up move, egg move, move, evolution and item tables; the rest of the data-editing code (encounters, trainers, randomizers and so on) is not exposed yet:
+- **`pk3DS.Cli`** builds the `pk3ds` command. It covers the game container, archive, compression and hashing operations, plus game text and the species, level-up move, egg move, move, evolution, item and Mega Evolution tables; the rest of the data-editing code (encounters, trainers, randomizers and so on) is not exposed yet:
 
 | Command | What it does |
 |---|---|
@@ -65,6 +65,7 @@ This fork separates pk3DS's file tooling from the Windows UI so it can run on ma
 | `evolution dump <out.tsv>` / `evolution import <in.tsv>` | The same for evolutions: 8 `method:argument:species` slots per species or form |
 | `eggmove dump <out.tsv>` / `eggmove import <in.tsv>` | The same for egg moves, one row per species |
 | `item dump <out.tsv>` / `item import <in.tsv>` | The same for item data: price, effects, pockets, boosts |
+| `megaevo dump <out.tsv>` / `megaevo import <in.tsv>` | The same for Mega Evolutions: 3 `form:method:argument` slots per species or form (method 1 = holding the item in `argument`) |
 | `blz decode\|encode <file>...` | Bottom-LZ (de)compression in place |
 | `lzss compress\|decompress <in> <out>` | LZSS (de)compression |
 | `cro hash <crr> <croDir>` | Recompute CRO hashes and update the CRR |

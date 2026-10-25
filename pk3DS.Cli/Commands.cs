@@ -187,6 +187,7 @@ public static class Commands
         .. DataCommands("evolution", DataTable.Evolution, "evolution methods"),
         .. DataCommands("eggmove", DataTable.EggMove, "egg moves"),
         .. DataCommands("item", DataTable.Item, "item data (prices, effects, pockets)"),
+        .. DataCommands("megaevo", DataTable.MegaEvo, "Mega Evolutions (form and Mega Stone)"),
 
         new("blz", "decode", "<file>...", "Decompress bottom-LZ files in place",
             NoOptions, a => Blz(a, "-d")),

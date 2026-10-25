@@ -114,6 +114,7 @@ public class GameConfig
         InitializeEvos();
         InitializeEggMoves();
         InitializeItems();
+        InitializeMegaEvolutions();
         InitializeGameInfo();
     }
 
@@ -146,6 +147,11 @@ public class GameConfig
     public void InitializeItems()
     {
         Items = GetGARCData("item").Files.Select(file => new Item(file)).ToArray();
+    }
+
+    public void InitializeMegaEvolutions()
+    {
+        MegaEvolutions = GetGARCData("megaevo").Files.Select(file => new MegaEvolutions(file)).ToArray();
     }
 
     /// <summary>Loads the story text, which <see cref="InitializeAll"/> does not (the upstream story text editor read it on open).</summary>
@@ -282,6 +288,19 @@ public class GameConfig
         g.Files = d;
         g.Save();
         InitializeItems();
+        return changed;
+    }
+
+    public int SaveMegaEvolutions()
+    {
+        var g = GetGARCData("megaevo");
+        byte[][] d = g.Files;
+        int changed = WriteChanged(d, MegaEvolutions, z => new MegaEvolutions(z), z => z.Write());
+        if (changed == 0)
+            return 0;
+        g.Files = d;
+        g.Save();
+        InitializeMegaEvolutions();
         return changed;
     }
 
@@ -422,6 +441,7 @@ public class GameConfig
     public EvolutionSet[] Evolutions { get; private set; }
     public EggMoves[] EggMoves { get; private set; }
     public Item[] Items { get; private set; }
+    public MegaEvolutions[] MegaEvolutions { get; private set; }
 
     public bool XY => Version == GameVersion.XY;
     public bool ORAS => Version is GameVersion.ORAS or GameVersion.ORASDEMO;

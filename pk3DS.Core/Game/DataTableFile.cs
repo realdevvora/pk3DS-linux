@@ -16,6 +16,7 @@ public enum DataTable
     Evolution,
     EggMove,
     Item,
+    MegaEvo,
 }
 
 /// <summary>
@@ -121,6 +122,7 @@ public static class DataTableFile
             DataTable.Evolution => (EvolutionColumns(config), config.Evolutions.Length),
             DataTable.EggMove => (EggMoveColumns(config), config.EggMoves.Length),
             DataTable.Item => (ItemColumns(config), config.Items.Length),
+            DataTable.MegaEvo => (MegaEvoColumns(config), config.MegaEvolutions.Length),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
     }
@@ -135,6 +137,7 @@ public static class DataTableFile
             case DataTable.Evolution: config.InitializeEvos(); break;
             case DataTable.EggMove: config.InitializeEggMoves(); break;
             case DataTable.Item: config.InitializeItems(); break;
+            case DataTable.MegaEvo: config.InitializeMegaEvolutions(); break;
         }
     }
 
@@ -146,6 +149,7 @@ public static class DataTableFile
         DataTable.Evolution => config.SaveEvolutions(),
         DataTable.EggMove => config.SaveEggMoves(),
         DataTable.Item => config.SaveItems(),
+        DataTable.MegaEvo => config.SaveMegaEvolutions(),
         _ => throw new ArgumentOutOfRangeException(nameof(table)),
     };
 
@@ -396,6 +400,35 @@ public static class DataTableFile
             Number("_0x23", i => t[i]._0x23, (i, v) => t[i]._0x23 = (byte)v, 0, 255),
             Number("_0x24", i => t[i]._0x24, (i, v) => t[i]._0x24 = (byte)v, 0, 255),
         ];
+    }
+
+    private static Column[] MegaEvoColumns(GameConfig config)
+    {
+        var t = config.MegaEvolutions;
+        var (names, forms) = EntryNames(config);
+        string[] items = config.GetText(TextName.ItemNames);
+        int maxItem = config.Info.MaxItemID;
+
+        // Slots as in MegaEvoEditor6: form:method:argument, where method 1 means holding the item given as the argument.
+        var columns = new List<Column> { Index(), Text("name", i => names[i]), Text("form", i => forms[i].ToString(Invariant)) };
+        for (int slot = 0; slot < t[0].Form.Length; slot++)
+        {
+            int k = slot;
+            columns.Add(new($"mega{k + 1}", i => $"{t[i].Form[k]}:{t[i].Method[k]}:{t[i].Argument[k]}", (i, s) =>
+            {
+                string[] parts = s.Split(':');
+                if (parts.Length != 3)
+                    throw new FormatException($"'{s}' is not form:method:argument.");
+                int method = ParseNumber(parts[1], 0, ushort.MaxValue);
+                t[i].Form[k] = (ushort)ParseNumber(parts[0], 0, ushort.MaxValue);
+                t[i].Method[k] = (ushort)method;
+                t[i].Argument[k] = (ushort)ParseNumber(parts[2], 0, method == 1 ? maxItem : ushort.MaxValue);
+            }));
+        }
+        columns.Add(Text("mega_names", i => string.Join(", ", Enumerable.Range(0, t[i].Form.Length)
+            .Where(k => t[i].Method[k] != 0)
+            .Select(k => t[i].Method[k] == 1 ? $"form {t[i].Form[k]} with {items[t[i].Argument[k]]}" : $"form {t[i].Form[k]} by method {t[i].Method[k]}"))));
+        return [.. columns];
     }
 
     /// <summary>
