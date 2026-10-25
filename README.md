@@ -47,7 +47,7 @@ Below are some images of how the editor should look when you run it.
 This fork separates pk3DS's file tooling from the Windows UI so it can run on macOS and Linux:
 
 - **`pk3DS.Core`** is a plain `net10.0` class library with no Windows dependency. Long-running operations report through an `IProgressSink` instead of WinForms `ProgressBar` / `RichTextBox` controls, and `null` is accepted. The image code that needs `System.Drawing` is excluded from the build for now.
-- **`pk3DS.Cli`** builds the `pk3ds` command. It covers the game container, archive, compression and hashing operations, plus game text and species data; the rest of the data-editing code (learnsets, moves, randomizers and so on) is not exposed yet:
+- **`pk3DS.Cli`** builds the `pk3ds` command. It covers the game container, archive, compression and hashing operations, plus game text, species data and level-up moves; the rest of the data-editing code (moves, evolutions, randomizers and so on) is not exposed yet:
 
 | Command | What it does |
 |---|---|
@@ -60,6 +60,7 @@ This fork separates pk3DS's file tooling from the Windows UI so it can run on ma
 | `game info (--dir <dir> \| --romfs <dir> --exefs <dir>)` | Detect the game in an extracted RomFS/ExeFS and print its version and limits |
 | `text dump <outDir>` / `text import <inDir>` (with the same game options) | Write each game text file to `NNNN.txt`, one string per line, and write edited files back into the game text archive |
 | `personal dump <out.tsv>` / `personal import <in.tsv>` (with the same game options) | Write species stats, types, abilities, items and TM/tutor flags to a spreadsheet file (one row per species or form), and write edited rows back. Omega Ruby / Alpha Sapphire only for now |
+| `learnset dump <out.tsv>` / `learnset import <in.tsv>` | The same for level-up moves, written as `level:move` pairs |
 | `blz decode\|encode <file>...` | Bottom-LZ (de)compression in place |
 | `lzss compress\|decompress <in> <out>` | LZSS (de)compression |
 | `cro hash <crr> <croDir>` | Recompute CRO hashes and update the CRR |

@@ -111,7 +111,7 @@ Column names are the Core property names in snake case. Values are shown the way
 - `tmhm`, `type_tutors` and `special_tutors1..4` list the indexes of the checked boxes (`0 5 12`), in the order of the editor's lists. Every stored bit is covered.
 
 **learnset** (826 rows): `index name form moves move_names`
-- `moves` is a list of `level:move` pairs (`1:33 1:45 5:39`), in the order the editor's grid shows them. All retail learnsets are sorted by level and nobody has checked whether the game needs that, so import rejects levels out of order. An empty cell means no level-up moves.
+- `moves` is a list of `level:move` pairs (`1:33 1:45 5:39`), in the order the editor's grid shows them. All retail learnsets are sorted by level and nobody has checked whether the game needs that, so import rejects levels out of order. Levels must be 1–100 and moves 1 or higher, the limits `LevelUpEditor6` applied (it clamped levels and dropped move 0 rather than reporting them). An empty cell means no level-up moves.
 
 **eggmove** (722 rows): `index name moves move_names`
 - `moves` is a list of move IDs. An empty cell means no egg moves.

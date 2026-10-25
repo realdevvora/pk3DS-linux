@@ -10,6 +10,7 @@ namespace pk3DS.Core;
 public enum DataTable
 {
     Personal,
+    Learnset,
 }
 
 /// <summary>
@@ -110,6 +111,7 @@ public static class DataTableFile
         return table switch
         {
             DataTable.Personal => (PersonalColumns(config), config.Personal.Table.Length),
+            DataTable.Learnset => (LearnsetColumns(config), config.Learnsets.Length),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
     }
@@ -119,21 +121,21 @@ public static class DataTableFile
         switch (table)
         {
             case DataTable.Personal: config.InitializePersonal(); break;
+            case DataTable.Learnset: config.InitializeLearnset(); break;
         }
     }
 
     private static int Save(GameConfig config, DataTable table) => table switch
     {
         DataTable.Personal => config.SavePersonal(),
+        DataTable.Learnset => config.SaveLearnsets(),
         _ => throw new ArgumentOutOfRangeException(nameof(table)),
     };
 
     private static Column[] PersonalColumns(GameConfig config)
     {
         var t = config.Personal.Table;
-        string[] species = config.GetText(TextName.SpeciesNames);
-        string[][] altForms = config.Personal.GetFormList(species, config.MaxSpeciesID);
-        string[] names = config.Personal.GetPersonalEntryList(altForms, species, config.MaxSpeciesID, out _, out int[] forms);
+        var (names, forms) = EntryNames(config);
         int maxType = config.GetText(TextName.Types).Length - 1;
         int maxItem = config.Info.MaxItemID;
         int maxAbility = config.Info.MaxAbilityID;
@@ -189,6 +191,45 @@ public static class DataTableFile
         ];
     }
 
+    private static Column[] LearnsetColumns(GameConfig config)
+    {
+        var t = config.Learnsets;
+        var (names, forms) = EntryNames(config);
+        string[] moveNames = config.GetText(TextName.MoveNames);
+        int maxMove = config.Info.MaxMoveID;
+
+        return
+        [
+            Index(),
+            Text("name", i => names[i]),
+            Text("form", i => forms[i].ToString(Invariant)),
+            // level:move pairs. Levels and moves are limited as in LevelUpEditor6, which clamped levels to 1-100 and dropped move 0.
+            new("moves", i => string.Join(' ', t[i].Moves.Select((m, n) => $"{t[i].Levels[n]}:{m}")), (i, s) =>
+            {
+                int[][] pairs = [.. s.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(p => ParsePair(p, 1, 100, 1, maxMove))];
+                for (int n = 1; n < pairs.Length; n++)
+                {
+                    if (pairs[n][0] < pairs[n - 1][0])
+                        throw new FormatException($"levels must not go down ('{pairs[n - 1][0]}:{pairs[n - 1][1]}' comes before '{pairs[n][0]}:{pairs[n][1]}').");
+                }
+                t[i].Levels = [.. pairs.Select(z => z[0])];
+                t[i].Moves = [.. pairs.Select(z => z[1])];
+            }),
+            Text("move_names", i => string.Join(", ", t[i].Moves.Select((m, n) => $"{t[i].Levels[n]}:{moveNames[m]}"))),
+        ];
+    }
+
+    /// <summary>
+    /// Names of the personal table entries as the upstream editors list them (forms as "Species N"), and each entry's form number.
+    /// </summary>
+    private static (string[] Names, int[] Forms) EntryNames(GameConfig config)
+    {
+        string[] species = config.GetText(TextName.SpeciesNames);
+        string[][] altForms = config.Personal.GetFormList(species, config.MaxSpeciesID);
+        string[] names = config.Personal.GetPersonalEntryList(altForms, species, config.MaxSpeciesID, out _, out int[] forms);
+        return (names, forms);
+    }
+
     private static Column Index() => new("index", i => i.ToString(Invariant));
 
     private static Column Text(string name, Func<int, string> get) => new(name, i => get(i) ?? string.Empty);
@@ -239,6 +280,15 @@ public static class DataTableFile
         if (v < min || v > max)
             throw new FormatException($"{v} is outside {min}-{max}.");
         return v;
+    }
+
+    /// <summary>Parses "a:b" into two numbers.</summary>
+    private static int[] ParsePair(string s, int minA, int maxA, int minB, int maxB)
+    {
+        string[] parts = s.Split(':');
+        if (parts.Length != 2)
+            throw new FormatException($"'{s}' is not two numbers joined by ':'.");
+        return [ParseNumber(parts[0], minA, maxA), ParseNumber(parts[1], minB, maxB)];
     }
 
     private static int[] ParseList(string s, int min, int max) =>
