@@ -114,7 +114,7 @@ Column names are the Core property names in snake case. Values are shown the way
 - `moves` is a list of `level:move` pairs (`1:33 1:45 5:39`), in the order the editor's grid shows them. All retail learnsets are sorted by level and nobody has checked whether the game needs that, so import rejects levels out of order. Levels must be 1–100 and moves 1 or higher, the limits `LevelUpEditor6` applied (it clamped levels and dropped move 0 rather than reporting them). An empty cell means no level-up moves.
 
 **eggmove** (722 rows): `index name moves move_names`
-- `moves` is a list of move IDs. An empty cell means no egg moves.
+- `moves` is a list of move IDs, 1 or higher (`EggMoveEditor6` dropped move 0). An empty cell means no egg moves. Emptying a list that had moves writes a zero-length entry, as upstream does, not the `00 00` the retail ORAS files use.
 
 **evolution** (826 rows): `index name form evo1 ... evo8 evo_names`
 - Each `evoN` is `method:argument:species`, for the 8 slots of the editor. `0:0:0` is an empty slot. `method` is 0–34, as in the editor. `argument` is only checked against its 16-bit size, because its meaning depends on the method (level, item, move, species, ...). `species` is 0 to the highest species ID, the editor's list. `evo_names` lists the species each slot evolves into. The method names live in `EvolutionEditor6` (UI code) and are not moved by this work.

@@ -47,7 +47,7 @@ Below are some images of how the editor should look when you run it.
 This fork separates pk3DS's file tooling from the Windows UI so it can run on macOS and Linux:
 
 - **`pk3DS.Core`** is a plain `net10.0` class library with no Windows dependency. Long-running operations report through an `IProgressSink` instead of WinForms `ProgressBar` / `RichTextBox` controls, and `null` is accepted. The image code that needs `System.Drawing` is excluded from the build for now.
-- **`pk3DS.Cli`** builds the `pk3ds` command. It covers the game container, archive, compression and hashing operations, plus game text, species data, level-up moves, move data and evolutions; the rest of the data-editing code (egg moves, randomizers and so on) is not exposed yet:
+- **`pk3DS.Cli`** builds the `pk3ds` command. It covers the game container, archive, compression and hashing operations, plus game text and the species, level-up move, egg move, move and evolution tables; the rest of the data-editing code (encounters, trainers, randomizers and so on) is not exposed yet:
 
 | Command | What it does |
 |---|---|
@@ -63,6 +63,7 @@ This fork separates pk3DS's file tooling from the Windows UI so it can run on ma
 | `learnset dump <out.tsv>` / `learnset import <in.tsv>` | The same for level-up moves, written as `level:move` pairs |
 | `move dump <out.tsv>` / `move import <in.tsv>` | The same for move data: type, category, power, accuracy, PP, priority, effects and flags |
 | `evolution dump <out.tsv>` / `evolution import <in.tsv>` | The same for evolutions: 8 `method:argument:species` slots per species or form |
+| `eggmove dump <out.tsv>` / `eggmove import <in.tsv>` | The same for egg moves, one row per species |
 | `blz decode\|encode <file>...` | Bottom-LZ (de)compression in place |
 | `lzss compress\|decompress <in> <out>` | LZSS (de)compression |
 | `cro hash <crr> <croDir>` | Recompute CRO hashes and update the CRR |

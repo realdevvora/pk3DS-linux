@@ -14,6 +14,7 @@ public enum DataTable
     Learnset,
     Move,
     Evolution,
+    EggMove,
 }
 
 /// <summary>
@@ -117,6 +118,7 @@ public static class DataTableFile
             DataTable.Learnset => (LearnsetColumns(config), config.Learnsets.Length),
             DataTable.Move => (MoveColumns(config), config.Moves.Length),
             DataTable.Evolution => (EvolutionColumns(config), config.Evolutions.Length),
+            DataTable.EggMove => (EggMoveColumns(config), config.EggMoves.Length),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
     }
@@ -129,6 +131,7 @@ public static class DataTableFile
             case DataTable.Learnset: config.InitializeLearnset(); break;
             case DataTable.Move: config.InitializeMoves(); break;
             case DataTable.Evolution: config.InitializeEvos(); break;
+            case DataTable.EggMove: config.InitializeEggMoves(); break;
         }
     }
 
@@ -138,6 +141,7 @@ public static class DataTableFile
         DataTable.Learnset => config.SaveLearnsets(),
         DataTable.Move => config.SaveMoves(),
         DataTable.Evolution => config.SaveEvolutions(),
+        DataTable.EggMove => config.SaveEggMoves(),
         _ => throw new ArgumentOutOfRangeException(nameof(table)),
     };
 
@@ -303,6 +307,23 @@ public static class DataTableFile
         }
         columns.Add(Text("evo_names", i => string.Join(", ", t[i].PossibleEvolutions.Where(e => e.Method != 0).Select(e => species[e.Species]))));
         return [.. columns];
+    }
+
+    private static Column[] EggMoveColumns(GameConfig config)
+    {
+        var t = config.EggMoves;
+        string[] species = config.GetText(TextName.SpeciesNames);
+        string[] moveNames = config.GetText(TextName.MoveNames);
+        int maxMove = config.Info.MaxMoveID;
+
+        return
+        [
+            Index(),
+            Text("name", i => species[i]),
+            // Move 0 is not allowed, as EggMoveEditor6 dropped it.
+            new("moves", i => string.Join(' ', t[i].Moves), (i, s) => t[i].Moves = ParseList(s, 1, maxMove)),
+            Text("move_names", i => string.Join(", ", t[i].Moves.Select(m => moveNames[m]))),
+        ];
     }
 
     /// <summary>
