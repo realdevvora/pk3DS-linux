@@ -149,6 +149,8 @@ Column names are the Core property names in snake case. Values are shown the way
 
 **starter** (4 rows): `index set starter1 starter2 starter3 starter_names`. Import writes the species to the selection screen and to the gifts that give them, as `StarterEditor6` does.
 
+**typechart** (18 rows): `index type vs0 ... vs17`. Row N is attacking type N; `vsM` is its effectiveness against type M (the same order as the rows): 0, 2, 4 or 8, the values `TypeChart6` cycles through.
+
 ## Verification
 
 For each table, before it is committed:

@@ -201,6 +201,7 @@ public static class Commands
         .. DataCommands("static", DataTable.StaticEncounter, "static encounters: legendaries and other fixed Pokémon (DllField.cro)"),
         .. DataCommands("gift", DataTable.Gift, "gift Pokémon, including the starters (DllField.cro)"),
         .. DataCommands("starter", DataTable.Starter, "the starter choices (DllPoke3Select.cro and their gifts in DllField.cro)"),
+        .. DataCommands("typechart", DataTable.TypeChart, "the type effectiveness chart (DllBattle.cro)"),
 
         new("shiny", "info", GameOptions.Synopsis, "Show the shiny rate patch in code.bin (needs a decompressed code.bin)",
             GameOptions.ValueOptions, a =>

@@ -30,6 +30,7 @@ public enum DataTable
     StaticEncounter,
     Gift,
     Starter,
+    TypeChart,
 }
 
 /// <summary>
@@ -184,6 +185,7 @@ public static class DataTableFile
             DataTable.StaticEncounter => StaticEncounterTable(config),
             DataTable.Gift => GiftTable(config),
             DataTable.Starter => StarterTable(config),
+            DataTable.TypeChart => TypeChartTable(config),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
     }
@@ -803,6 +805,39 @@ public static class DataTableFile
             return changed;
         }
         return new([.. columns], t.Length, _ => true, Save, () => { });
+    }
+
+    /// <summary>
+    /// The type chart, edited in DllBattle.cro: row N is attacking type N, and column vsM its effectiveness against type M (0, 2, 4 or 8).
+    /// </summary>
+    private static Table TypeChartTable(GameConfig config)
+    {
+        var battle = new CroFile(config.RomFS, TypeEffectiveness6.FileName);
+        var chart = new TypeEffectiveness6(battle, config.ORAS);
+        var t = chart.Chart;
+        string[] types = config.GetText(TextName.Types);
+
+        var columns = new List<Column> { Index(), Text("type", i => types[i]) };
+        for (int m = 0; m < TypeEffectiveness6.TypeCount; m++)
+        {
+            int defend = m;
+            columns.Add(new($"vs{defend}", i => t[i, defend].ToString(Invariant), (i, s) =>
+            {
+                int v = ParseNumber(s, 0, 8);
+                if (Array.IndexOf(TypeEffectiveness6.Values, (byte)v) < 0)
+                    throw new FormatException($"{v} is not 0, 2, 4 or 8 (no effect, not very effective, regular, super effective).");
+                t[i, defend] = (byte)v;
+            }));
+        }
+        int Save()
+        {
+            var original = new TypeEffectiveness6(battle, config.ORAS).Chart;
+            int changed = Enumerable.Range(0, TypeEffectiveness6.TypeCount).Count(i => Enumerable.Range(0, TypeEffectiveness6.TypeCount).Any(m => t[i, m] != original[i, m]));
+            chart.Write(battle);
+            battle.Save();
+            return changed;
+        }
+        return new([.. columns], TypeEffectiveness6.TypeCount, _ => true, Save, () => { });
     }
 
     /// <summary>

@@ -47,7 +47,7 @@ Below are some images of how the editor should look when you run it.
 This fork separates pk3DS's file tooling from the Windows UI so it can run on macOS and Linux:
 
 - **`pk3DS.Core`** is a plain `net10.0` class library with no Windows dependency. Long-running operations report through an `IProgressSink` instead of WinForms `ProgressBar` / `RichTextBox` controls, and `null` is accepted. The image code that needs `System.Drawing` is excluded from the build for now.
-- **`pk3DS.Cli`** builds the `pk3ds` command. It covers the game container, archive, compression and hashing operations, plus game text and the species, level-up move, egg move, move, evolution, item, Mega Evolution, trainer, Battle Maison, TM/HM, Poké Mart, Pickup, O-Power, static encounter, gift and starter tables; the rest of the data-editing code (encounters, trainers, randomizers and so on) is not exposed yet:
+- **`pk3DS.Cli`** builds the `pk3ds` command. It covers the game container, archive, compression and hashing operations, plus game text and the species, level-up move, egg move, move, evolution, item, Mega Evolution, trainer, Battle Maison, TM/HM, Poké Mart, Pickup, O-Power, static encounter, gift, starter and type chart tables; the rest of the data-editing code (encounters, trainers, randomizers and so on) is not exposed yet:
 
 | Command | What it does |
 |---|---|
@@ -75,6 +75,7 @@ This fork separates pk3DS's file tooling from the Windows UI so it can run on ma
 | `opower dump <out.tsv>` / `opower import <in.tsv>` | O-Powers 1-64: energy costs, usability, stage, level-up, efficacy, duration (the fields the pk3DS editor edits) |
 | `static dump/import` and `gift dump/import` | Static encounters (legendaries and other fixed Pokémon) and gift Pokémon (including the starters, gifts 0-2), stored in `DllField.cro`. After editing a CRO, run `cro hash` if your console checks CRO hashes |
 | `starter dump/import` | The starter choices, one row per set (ORAS: Gen 3, 2, 4, 5). Writes the selection screen (`DllPoke3Select.cro`) and the gifts that give the starters (`DllField.cro`) |
+| `typechart dump/import` | The type effectiveness chart (`DllBattle.cro`): row N is the attacking type, column `vsM` its effectiveness against type M: 0 no effect, 2 not very effective, 4 regular, 8 super effective |
 | `shiny info` / `shiny set [--rerolls <count> \| --original] [--always yes\|no]` | Show or patch the shiny rate: a fixed number of PID rerolls per Pokémon (a count the patch cannot encode is raised to the next it can, as in pk3DS), the game's own count, or every Pokémon shiny |
 | `blz decode\|encode <file>...` | Bottom-LZ (de)compression in place |
 | `lzss compress\|decompress <in> <out>` | LZSS (de)compression |
