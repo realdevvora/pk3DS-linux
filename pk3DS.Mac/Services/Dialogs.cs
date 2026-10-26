@@ -3,6 +3,8 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Platform.Storage;
+using pk3DS.Mac.ViewModels;
+using pk3DS.Mac.Views;
 
 namespace pk3DS.Mac.Services;
 
@@ -74,6 +76,8 @@ public sealed class Dialogs(Window owner) : IDialogs
     {
         Window window = viewModel switch
         {
+            TableEditorViewModel => new TableEditorWindow(),
+            RandomizerViewModel => new RandomizerWindow(),
             _ => throw new System.ArgumentException($"No window for {viewModel.GetType().Name}."),
         };
         window.DataContext = viewModel;

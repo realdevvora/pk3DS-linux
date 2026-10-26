@@ -215,4 +215,18 @@ public partial class MainViewModel(IDialogs dialogs) : ObservableObject
 
     [RelayCommand]
     private void ClearLog() => Log = "";
+
+    /// <summary>Opens an editor; a table that cannot be read (for example a compressed code.bin) is reported instead of crashing the app.</summary>
+    public async Task OpenEditor(Editor editor)
+    {
+        try
+        {
+            editor.Open(this);
+        }
+        catch (Exception e)
+        {
+            AppendLog($"{editor.Name}: {e.Message}");
+            await Dialogs.Alert($"Cannot open {editor.Name}", e.Message);
+        }
+    }
 }

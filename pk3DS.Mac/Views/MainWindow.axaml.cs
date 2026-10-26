@@ -21,7 +21,7 @@ public partial class MainWindow : Window
         foreach (var editor in Editors.All)
         {
             var button = new Button { Content = editor.Name, Width = 160, Margin = new(4) };
-            button.Click += (_, _) => editor.Open(vm);
+            button.Click += async (_, _) => await vm.OpenEditor(editor);
             (editor.Tab switch { EditorTab.ExeFS => ExeFSButtons, EditorTab.CRO => CROButtons, _ => RomFSButtons }).Children.Add(button);
         }
     }
