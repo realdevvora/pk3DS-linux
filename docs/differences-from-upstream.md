@@ -48,6 +48,9 @@ How the changes were checked: the rebuilt RomFS and ExeFS, all 298 GARCs and all
 | `CroFile`, `FieldEncounters6` | The static encounter and gift editors read and wrote `DllField.cro` at hardcoded offsets inside the forms | In Core, same offsets |
 | `WildEncountersORAS`, `GameConfig.WildEncounters` | `RSWE` unpacked the `encdata` GARC to a folder in the working directory and parsed it inside the form | In Core, in memory; only changed maps are recompressed |
 | ORAS wild encounter save | `RSWE` rewrote the table as 0x102 bytes, clearing the 14 bytes after the 61 slots (non-zero in 10 retail tables) | Only the 61 slots are written, to the map and to the DexNav copy |
+| `TableRandomizers`, randomizer option records | The randomize buttons read their settings from checkboxes in each form | In Core; the option defaults are the forms' starting values |
+| `MoveInfoRandomizer` | Move randomization lived in `MoveEditor6` and was meant to skip Struggle (165) and Curse (174), but skipped moves 166 and 175 because its list starts at move 1 | In Core (the class was an empty stub); skips Struggle and Curse |
+| Randomizer seed | Runs could not be repeated | `--seed` seeds `Util.Rand` (`Util.ReseedRand` already existed in Core); without it a run is random, as before |
 | `TypeEffectiveness6` | The type chart's offset lived in `TypeChart6`, next to the drawing code | The data part is in Core; drawing the chart stays with the deferred image code |
 | `Starters6` | The starter editor's offsets and gift mapping lived in the form | In Core |
 | Gift held item "none" | `GiftEditor6` showed the stored -1 as "(None)" and wrote 0 back for every gift opened | Written as -1, as the game stores it |

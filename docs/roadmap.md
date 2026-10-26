@@ -50,7 +50,7 @@ Each task is one branch and one pull request, verified like the data tables (unc
 
 ### Phase 5: randomizers
 
-15. **`randomize` commands for the existing Core randomizers** (personal, learnset, egg move, evolution, move). They run on the loaded tables and save through the same `GameConfig.Save*` methods. Options mirror the upstream checkboxes.
+15. **`randomize` commands for the existing Core randomizers** *(done)* (personal, learnset, egg move, evolution, move). They run on the loaded tables and save through the same `GameConfig.Save*` methods. Options mirror the upstream checkboxes.
 16. **Trainer and wild randomizers.** Move their logic out of `RSTE` / `TrainerRand` / `RSWE` into Core. Depends on tasks 4 and 13.
 
 ## Order

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using pk3DS.Core;
 using pk3DS.Core.CTR;
+using pk3DS.Core.Randomizers;
 using pk3DS.Core.Structures;
 
 namespace pk3DS.Cli;
@@ -204,6 +205,14 @@ public static class Commands
         .. DataCommands("typechart", DataTable.TypeChart, "the type effectiveness chart (DllBattle.cro)"),
         .. DataCommands("wild", DataTable.Wild, "Omega Ruby / Alpha Sapphire wild encounters (one row per slot)"),
 
+        Randomize<PersonalRandomizerOptions>("personal", "Randomize species data (stats, types, abilities, items, TM/tutor compatibility)", TableRandomizers.Personal),
+        Randomize<LearnsetRandomizerOptions>("learnset", "Randomize level-up moves", TableRandomizers.Learnset),
+        Randomize<EggMoveRandomizerOptions>("eggmove", "Randomize egg moves", TableRandomizers.EggMoves),
+        Randomize<EvolutionRandomizerOptions>("evolution", "Randomize the species each Pokémon evolves into (methods stay the same)", TableRandomizers.Evolutions),
+        Randomize<EvolutionRandomizerOptions>("evolve-every-level", "Make every Pokémon evolve into a random species at every level up", TableRandomizers.EvolveEveryLevel),
+        Randomize<NoRandomizerOptions>("trade-evolutions", "Replace trade evolutions with level-up evolutions (not random)", (c, _) => TableRandomizers.RemoveTradeEvolutions(c)),
+        Randomize<MoveRandomizerOptions>("move", "Randomize move types and/or damage categories", TableRandomizers.Moves),
+
         new("shiny", "info", GameOptions.Synopsis, "Show the shiny rate patch in code.bin (needs a decompressed code.bin)",
             GameOptions.ValueOptions, a =>
             {
@@ -335,6 +344,76 @@ public static class Commands
             return (config.GameTextStrings, config.SaveGameText);
         config.InitializeStoryText();
         return (config.StoryTextStrings, config.SaveStoryText);
+    }
+
+    /// <summary>A randomizer without options.</summary>
+    private sealed record NoRandomizerOptions;
+
+    /// <summary>
+    /// A 'randomize' command. Every property of <typeparamref name="T"/> becomes an option (--kebab-case, yes/no or a number) whose default is
+    /// the property's, which is the upstream editor's.
+    /// </summary>
+    private static Command Randomize<T>(string name, string summary, Func<GameConfig, T, int> run) where T : new()
+    {
+        var properties = typeof(T).GetProperties().Where(p => p.CanWrite && p.Name != "EqualityContract").ToArray();
+        string[] names = [.. properties.Select(p => KebabCase(p.Name))];
+        var defaults = new T();
+        string usage = string.Join(' ', [GameOptions.Synopsis, "[--seed <n>]",
+            .. properties.Select((p, i) => $"[--{names[i]} {(p.PropertyType == typeof(bool) ? "yes|no" : "<n>")} ({FormatOption(p.GetValue(defaults))})]")]);
+        string[] valueOptions = [.. GameOptions.ValueOptions, "seed", .. names];
+        return new("randomize", name, usage, summary, valueOptions, a =>
+        {
+            a.Expect(0);
+            a.RejectUnknown(valueOptions);
+            var options = new T();
+            for (int i = 0; i < properties.Length; i++)
+            {
+                if (a.Get(names[i]) is { } value)
+                    properties[i].SetValue(options, ParseOption(names[i], properties[i].PropertyType, value));
+            }
+            var config = GameOptions.Load(a);
+            if (a.Get("seed") is { } seed)
+                Util.ReseedRand(int.TryParse(seed, out int s) ? s : throw new UsageException($"Invalid seed '{seed}'."));
+            Console.WriteLine($"{run(config, options)} entries changed");
+            return true;
+        });
+    }
+
+    private static object ParseOption(string name, Type type, string value)
+    {
+        if (type == typeof(bool))
+        {
+            return value switch
+            {
+                "yes" => true,
+                "no" => false,
+                _ => throw new UsageException($"--{name} takes yes or no, not '{value}'."),
+            };
+        }
+        if (type == typeof(int) && int.TryParse(value, out int i) && i >= 0)
+            return i;
+        if (type == typeof(decimal) && decimal.TryParse(value, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out decimal d))
+            return d;
+        throw new UsageException($"Invalid value '{value}' for --{name}.");
+    }
+
+    private static string FormatOption(object value) => value is bool b ? (b ? "yes" : "no") : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>StatHp -> stat-hp, STABPercent -> stab-percent, FourMovesAtLevel1 -> four-moves-at-level-1.</summary>
+    private static string KebabCase(string name)
+    {
+        var sb = new StringBuilder();
+        for (int i = 0; i < name.Length; i++)
+        {
+            char c = name[i];
+            bool boundary = i > 0 && ((char.IsUpper(c) && (char.IsLower(name[i - 1]) || char.IsDigit(name[i - 1])))
+                || (char.IsUpper(c) && char.IsUpper(name[i - 1]) && i + 1 < name.Length && char.IsLower(name[i + 1]))
+                || (char.IsDigit(c) && char.IsLetter(name[i - 1])));
+            if (boundary)
+                sb.Append('-');
+            sb.Append(char.ToLowerInvariant(c));
+        }
+        return sb.ToString();
     }
 
     private static (string First, string Second) Two(CommandArgs a)
