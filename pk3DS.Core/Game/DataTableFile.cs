@@ -47,13 +47,11 @@ public static class DataTableFile
     private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
 
     /// <summary>One spreadsheet column; <see cref="Set"/> is null for a column that is only written.</summary>
-    private sealed record Column(string Name, Func<int, string> Get, Action<int, string> Set = null);
+    internal sealed record Column(string Name, Func<int, string> Get, Action<int, string> Set = null);
 
     /// <returns>Number of entries written</returns>
     public static int Dump(GameConfig config, DataTable table, string path)
     {
-        if (table == DataTable.TrainerPokemon)
-            return DumpTeams(config, path);
         var t = GetTable(config, table);
         int[] rows = [.. Enumerable.Range(0, t.Count).Where(t.Exists)];
         WriteRows(path, t.Columns, rows.Length, r => rows[r]);
@@ -68,6 +66,9 @@ public static class DataTableFile
             sb.Append(string.Join('\t', columns.Select(c => c.Get(entry(r))))).Append('\n');
         File.WriteAllText(path, sb.ToString(), Utf8);
     }
+
+    /// <summary>Opens a table for an editor.</summary>
+    public static DataTableView Open(GameConfig config, DataTable table) => new(config, table);
 
     /// <summary>
     /// Applies the rows of a file written by <see cref="Dump"/> and saves the table. Nothing is saved if any row is invalid.
@@ -159,9 +160,9 @@ public static class DataTableFile
     /// <summary>A table's columns and entry count, which entries exist (trainer 0 is a placeholder), and how to save or discard edits.</summary>
     /// <param name="Save">Writes the edited entries and returns how many changed</param>
     /// <param name="Reload">Discards edits applied to the loaded entries</param>
-    private sealed record Table(Column[] Columns, int Count, Func<int, bool> Exists, Func<int> Save, Action Reload);
+    internal sealed record Table(Column[] Columns, int Count, Func<int, bool> Exists, Func<int> Save, Action Reload);
 
-    private static Table GetTable(GameConfig config, DataTable table)
+    internal static Table GetTable(GameConfig config, DataTable table)
     {
         RequireORAS(config);
         static bool All(int _) => true;
@@ -188,6 +189,7 @@ public static class DataTableFile
             DataTable.Starter => StarterTable(config),
             DataTable.TypeChart => TypeChartTable(config),
             DataTable.Wild => WildTable(config),
+            DataTable.TrainerPokemon => TeamTable(config),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
     }
@@ -930,9 +932,9 @@ public static class DataTableFile
         ];
     }
 
-    private static int DumpTeams(GameConfig config, string path)
+    /// <summary>The team file's rows as they are now: one per slot of each trainer's current team. Slots are added or removed by import.</summary>
+    private static Table TeamTable(GameConfig config)
     {
-        RequireORAS(config);
         var t = config.Trainers;
         var keys = new List<(int Trainer, int Slot)>();
         for (int i = 0; i < t.Length; i++)
@@ -941,8 +943,7 @@ public static class DataTableFile
                 keys.Add((i, k));
         }
         var mons = keys.Select(z => t[z.Trainer].Team[z.Slot]).ToList();
-        WriteRows(path, TeamColumns(config, keys, mons), keys.Count, r => r);
-        return keys.Count;
+        return new(TeamColumns(config, keys, mons), keys.Count, _ => true, config.SaveTrainers, config.InitializeTrainers);
     }
 
     /// <summary>
@@ -1074,4 +1075,65 @@ public static class DataTableFile
 
     private static int[] ParseList(string s, int min, int max) =>
         [.. s.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(z => ParseNumber(z, min, max))];
+}
+
+/// <summary>
+/// A data table for an editor: the same columns, checks and save as <see cref="DataTableFile"/>, addressed by row and column.
+/// </summary>
+/// <remarks>Rows are the entries that exist (trainer 0 and maps without encounters have none). Saving or reverting rebuilds the view from the saved data.</remarks>
+public sealed class DataTableView
+{
+    private readonly GameConfig config;
+    private DataTableFile.Table table;
+    private int[] rows;
+
+    public DataTable Table { get; }
+
+    internal DataTableView(GameConfig config, DataTable table)
+    {
+        this.config = config;
+        Table = table;
+        Load();
+    }
+
+    private void Load()
+    {
+        table = DataTableFile.GetTable(config, Table);
+        rows = [.. Enumerable.Range(0, table.Count).Where(table.Exists)];
+    }
+
+    public int ColumnCount => table.Columns.Length;
+    public int RowCount => rows.Length;
+
+    public string ColumnName(int column) => table.Columns[column].Name;
+
+    /// <summary>Name columns, keys and derived values cannot be edited.</summary>
+    public bool IsReadOnly(int column) => table.Columns[column].Set == null;
+
+    public string Get(int row, int column) => table.Columns[column].Get(rows[row]);
+
+    /// <summary>Checks and applies a cell value.</summary>
+    /// <exception cref="FormatException">The value is not valid for the column; the message says why.</exception>
+    public void Set(int row, int column, string value)
+    {
+        if (IsReadOnly(column))
+            throw new InvalidOperationException($"Column '{ColumnName(column)}' cannot be edited.");
+        table.Columns[column].Set(rows[row], value);
+    }
+
+    /// <summary>Writes the changed entries.</summary>
+    /// <returns>Number of entries written</returns>
+    public int Save()
+    {
+        int changed = table.Save();
+        Load();
+        return changed;
+    }
+
+    /// <summary>Discards edits that were not saved.</summary>
+    public void Revert()
+    {
+        table.Reload();
+        Load();
+    }
 }
