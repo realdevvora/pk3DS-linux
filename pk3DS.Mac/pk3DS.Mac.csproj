@@ -16,6 +16,10 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Pokémon and item sprites, copied from pk3DS.WinForms/Resources/img -->
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\pk3DS.Core\pk3DS.Core.csproj" />
   </ItemGroup>
 </Project>

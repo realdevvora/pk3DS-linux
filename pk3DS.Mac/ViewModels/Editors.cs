@@ -16,8 +16,7 @@ public static class Editors
     [
         new(EditorTab.RomFS, "Game Text", main => main.Dialogs.Show(new TextEditorViewModel(main, story: false))),
         new(EditorTab.RomFS, "Story Text", main => main.Dialogs.Show(new TextEditorViewModel(main, story: true))),
-        Table(EditorTab.RomFS, "Personal Stats", [("Personal", DataTable.Personal)],
-            Randomizer<PersonalRandomizerOptions>("Randomize", "Randomize personal data", TableRandomizers.Personal)),
+        new(EditorTab.RomFS, "Personal Stats", main => main.Dialogs.Show(new SpeciesPageViewModel(main))),
         Table(EditorTab.RomFS, "Evolutions", [("Evolutions", DataTable.Evolution)],
             Randomizer<EvolutionRandomizerOptions>("Randomize", "Randomize evolutions", TableRandomizers.Evolutions),
             Randomizer<EvolutionRandomizerOptions>("Evolve every level", "Evolve every level", TableRandomizers.EvolveEveryLevel),
@@ -29,8 +28,7 @@ public static class Editors
         Table(EditorTab.RomFS, "Mega Evolutions", [("Mega Evolutions", DataTable.MegaEvo)]),
         Table(EditorTab.RomFS, "Egg Moves", [("Egg moves", DataTable.EggMove)],
             Randomizer<EggMoveRandomizerOptions>("Randomize", "Randomize egg moves", TableRandomizers.EggMoves)),
-        Table(EditorTab.RomFS, "Trainers", [("Trainers", DataTable.Trainer), ("Teams", DataTable.TrainerPokemon)],
-            Randomizer<TrainerRandomizerOptions>("Randomize", "Randomize trainers", TableRandomizers.Trainers)),
+        new(EditorTab.RomFS, "Trainers", main => main.Dialogs.Show(new TrainerPageViewModel(main))),
         Table(EditorTab.RomFS, "Battle Maison", [("Trainers", DataTable.MaisonTrainer), ("Pokémon", DataTable.MaisonPokemon),
             ("Super trainers", DataTable.SuperMaisonTrainer), ("Super Pokémon", DataTable.SuperMaisonPokemon)]),
         Table(EditorTab.RomFS, "Item Stats", [("Items", DataTable.Item)]),
@@ -48,6 +46,13 @@ public static class Editors
         Table(EditorTab.CRO, "Gift Pokémon", [("Gifts", DataTable.Gift)]),
         Table(EditorTab.CRO, "Static Encounters", [("Static encounters", DataTable.StaticEncounter)]),
     ];
+
+    /// <summary>The randomize buttons of the species and trainer pages' table views.</summary>
+    public static readonly RandomizerButton[] PersonalRandomizers =
+        [Randomizer<PersonalRandomizerOptions>("Randomize", "Randomize personal data", TableRandomizers.Personal)];
+
+    public static readonly RandomizerButton[] TrainerRandomizers =
+        [Randomizer<TrainerRandomizerOptions>("Randomize", "Randomize trainers", TableRandomizers.Trainers)];
 
     private static Editor Table(EditorTab tab, string name, (string, DataTable)[] tables, params RandomizerButton[] randomizers) =>
         new(tab, name, main => main.Dialogs.Show(new TableEditorViewModel(main, name, tables, randomizers)));

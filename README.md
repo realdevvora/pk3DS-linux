@@ -103,7 +103,7 @@ Fixes made while testing against a real Omega Ruby dump: rebuilt RomFS and ExeFS
 
 ## macOS app (this fork)
 
-`pk3DS.Mac` is a macOS app (Avalonia) on the same Core API as the CLI, laid out like the pk3DS window: RomFS, ExeFS, CRO and Output tabs, with File and Tools menus to open, extract and build a game, compress or decompress `code.bin`, update CRO hashes and restore the original files. Every table opens in a grid editor with the CLI's checks and spreadsheet export/import; game and story text have their own editor; randomize buttons sit in the editors they change. Opening a game backs up its original files to a `backup` folder next to the game folder, as pk3DS did.
+`pk3DS.Mac` is a macOS app (Avalonia) on the same Core API as the CLI, laid out like the pk3DS window: RomFS, ExeFS, CRO and Output tabs, with File and Tools menus to open, extract and build a game, compress or decompress `code.bin`, update CRO hashes and restore the original files. Personal Stats and Trainers open as pages like pk3DS's editors (species with sprite and grouped fields; trainer with a card per team slot, slots can be added and removed); every table also opens in a grid editor with the CLI's checks and spreadsheet export/import; game and story text have their own editor; randomize buttons sit in the editors they change. Opening a game backs up its original files to a `backup` folder next to the game folder, as pk3DS did.
 
 ```
 pk3DS.Mac/build-app.sh                       # builds pk3DS.Mac/bin/app/pk3DS.app (self-contained, ad-hoc signed)
