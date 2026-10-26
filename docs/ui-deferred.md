@@ -1,5 +1,7 @@
 # UI-related work deferred from the Core/CLI split
 
+The macOS GUI is specified in [ui-spec.md](ui-spec.md). This file keeps the image layer, the WinForms rewiring and the backend issues it depends on.
+
 The first change set decouples `pk3DS.Core` from the UI and adds the `pk3DS.Cli` endpoints. The items below touch the UI or image side and were intentionally left out of it. Nothing here is wired in.
 
 ## State after the first change set
@@ -55,5 +57,5 @@ What was fixed is listed in [differences-from-upstream.md](differences-from-upst
 - `pk3DS.WinForms/GarcUtil.cs` still uses the removed static GARC events, and every other WinForms call site still passes `ProgressBar` / `RichTextBox`; they need an `IProgressSink` adapter.
 - `NCSD.ExtractCXIfromNCSD` hardcodes the first partition offset to `0x4000` instead of reading it from the header.
 - `rom build` output uses fixed-crypto (zero key) encryption, so `ncsd extract` cannot read a `.3ds` that pk3DS itself built.
-- Not yet exposed by the CLI: `SARC`, `DARC`, `ALYT`, `Exheader` info, static and wild encounters, the randomizers and trainer, item and shop data. Most of the editor logic still lives inside the WinForms forms.
+- Not yet exposed by the CLI: `SARC`, `DARC`, `ALYT`, `Exheader` info, move tutors (the upstream editor says its edits do not work in game), the title screen and icon editors (image layer), and the X/Y and Gen 7 editors. Everything else in the [roadmap](roadmap.md) is in Core.
 - The text writer (`TextFile`) does not reproduce the original bytes: it always terminates and pads each line, writes the line-table flag word as 0 (the original has non-zero values such as `4` on some lines), and trims each line. The decoded text round-trips exactly (160 of the 172 files in a test edit; the other 12 only lost a leading space), but whether the flag word matters in game is unverified. `text import` therefore leaves unchanged files alone.
