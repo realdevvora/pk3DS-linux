@@ -14,6 +14,8 @@ public static class Editors
     /// <summary>The editors, in the order of the pk3DS main window. Editors not in Core (title screen, move tutors, Gen 7) are left out.</summary>
     public static readonly Editor[] All =
     [
+        new(EditorTab.RomFS, "Game Text", main => main.Dialogs.Show(new TextEditorViewModel(main, story: false))),
+        new(EditorTab.RomFS, "Story Text", main => main.Dialogs.Show(new TextEditorViewModel(main, story: true))),
         Table(EditorTab.RomFS, "Personal Stats", [("Personal", DataTable.Personal)],
             Randomizer<PersonalRandomizerOptions>("Randomize", "Randomize personal data", TableRandomizers.Personal)),
         Table(EditorTab.RomFS, "Evolutions", [("Evolutions", DataTable.Evolution)],
@@ -39,6 +41,7 @@ public static class Editors
         Table(EditorTab.ExeFS, "Poké Mart", [("Marts", DataTable.Mart)]),
         Table(EditorTab.ExeFS, "Pickup Items", [("Pickup", DataTable.Pickup)]),
         Table(EditorTab.ExeFS, "O-Powers", [("O-Powers", DataTable.OPower)]),
+        new(EditorTab.ExeFS, "Shiny Rate", main => main.Dialogs.Show(new ShinyViewModel(main))),
 
         Table(EditorTab.CRO, "Type Chart", [("Type chart", DataTable.TypeChart)]),
         Table(EditorTab.CRO, "Starter Pokémon", [("Starters", DataTable.Starter)]),

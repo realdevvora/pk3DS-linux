@@ -1,0 +1,21 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:pk3DS.Mac.ViewModels"
+        x:Class="pk3DS.Mac.Views.ShinyWindow"
+        x:DataType="vm:ShinyViewModel"
+        Title="Shiny Rate" Width="420" SizeToContent="Height" CanResize="False">
+  <StackPanel Margin="16" Spacing="10">
+    <TextBlock Text="{Binding Current}" />
+    <StackPanel Orientation="Horizontal" Spacing="8">
+      <TextBlock Text="PID rerolls" VerticalAlignment="Center" Width="100" />
+      <NumericUpDown Value="{Binding Rerolls}" Minimum="1" Maximum="65535" FormatString="0" Width="140" />
+      <TextBlock Text="{Binding Chance}" VerticalAlignment="Center" Foreground="Gray" />
+    </StackPanel>
+    <CheckBox Content="Every Pokémon is shiny" IsChecked="{Binding AlwaysShiny}" IsEnabled="{Binding AlwaysAvailable}" />
+    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+      <Button Content="Restore original" Command="{Binding RestoreOriginalCommand}" />
+      <Button Content="Save" IsDefault="True" Command="{Binding SaveCommand}" />
+    </StackPanel>
+    <TextBlock Text="{Binding Status}" Foreground="Gray" TextWrapping="Wrap" />
+  </StackPanel>
+</Window>

@@ -1,0 +1,30 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:pk3DS.Mac.ViewModels"
+        x:Class="pk3DS.Mac.Views.TextEditorWindow"
+        x:DataType="vm:TextEditorViewModel"
+        Title="{Binding Title}" Width="1000" Height="640">
+  <DockPanel Margin="8">
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+      <TextBox Watermark="Search all files" Width="260" Text="{Binding Search}" />
+      <Button Content="Save" Command="{Binding SaveCommand}" IsEnabled="{Binding HasChanges}" />
+      <Button Content="Revert" Command="{Binding RevertCommand}" IsEnabled="{Binding HasChanges}" />
+    </StackPanel>
+    <TextBlock DockPanel.Dock="Bottom" Margin="0,8,0,0" Foreground="Gray" Text="{Binding Status}" />
+    <Grid ColumnDefinitions="300,8,*">
+      <ListBox ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:TextFileItem">
+            <TextBlock Text="{Binding Label}" FontFamily="Menlo,monospace" FontSize="11" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <DataGrid Grid.Column="2" ItemsSource="{Binding Lines}" AutoGenerateColumns="False" CanUserSortColumns="False" GridLinesVisibility="All">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Line" Binding="{Binding Number}" IsReadOnly="True" />
+          <DataGridTextColumn Header="Text" Binding="{Binding Text, Mode=TwoWay}" Width="*" />
+        </DataGrid.Columns>
+      </DataGrid>
+    </Grid>
+  </DockPanel>
+</Window>

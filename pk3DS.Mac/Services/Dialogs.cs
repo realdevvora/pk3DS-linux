@@ -78,6 +78,8 @@ public sealed class Dialogs(Window owner) : IDialogs
         {
             TableEditorViewModel => new TableEditorWindow(),
             RandomizerViewModel => new RandomizerWindow(),
+            TextEditorViewModel => new TextEditorWindow(),
+            ShinyViewModel => new ShinyWindow(),
             _ => throw new System.ArgumentException($"No window for {viewModel.GetType().Name}."),
         };
         window.DataContext = viewModel;
