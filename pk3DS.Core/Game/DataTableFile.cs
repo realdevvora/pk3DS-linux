@@ -26,6 +26,7 @@ public enum DataTable
     TMHM,
     Mart,
     Pickup,
+    OPower,
 }
 
 /// <summary>
@@ -176,6 +177,7 @@ public static class DataTableFile
             DataTable.TMHM => TMHMTable(config),
             DataTable.Mart => MartTable(config),
             DataTable.Pickup => PickupTable(config),
+            DataTable.OPower => OPowerTable(config),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
     }
@@ -652,6 +654,43 @@ public static class DataTableFile
             return changed;
         }
         return new(columns, items.Length, _ => true, Save, () => { });
+    }
+
+    /// <summary>The O-Powers 1-64 (entry 0 is unused), edited in code.bin. Only the fields the OPower editor edits are imported.</summary>
+    private static Table OPowerTable(GameConfig config)
+    {
+        var code = CodeBin.Load(config.ExeFS);
+        var power = new OPower6(code);
+        var t = power.Entries;
+        string[] text = config.GetText(TextName.OPowerFlavor);
+
+        Column[] columns =
+        [
+            Index(),
+            Text("name", i => text[t[i].Name]),
+            Number("player_cost", i => t[i].PlayerCost, (i, v) => t[i].PlayerCost = v, 0, 255),
+            Number("other_cost", i => t[i].OtherCost, (i, v) => t[i].OtherCost = v, 0, 255),
+            new("usability", i => t[i].Usability.ToString(Invariant), (i, s) =>
+            {
+                int v = ParseNumber(s, 0, 255);
+                if (v is not (0 or 2 or 254))
+                    throw new FormatException($"{v} is not 0, 2 or 254, the values the O-Power editor accepts.");
+                t[i].Usability = v;
+            }),
+            Number("stage", i => t[i].Stage, (i, v) => t[i].Stage = v, 0, 255),
+            Number("level_up", i => t[i].LevelUp, (i, v) => t[i].LevelUp = v, 0, 255),
+            Number("efficacy", i => t[i].Efficacy, (i, v) => t[i].Efficacy = v, 0, ushort.MaxValue),
+            Number("duration", i => t[i].Duration, (i, v) => t[i].Duration = v, 0, 255),
+        ];
+        int Save()
+        {
+            var original = new OPower6(code).Entries;
+            int changed = t.Where((z, i) => !z.Data.AsSpan().SequenceEqual(original[i].Data)).Count();
+            power.Write(code);
+            code.Save();
+            return changed;
+        }
+        return new(columns, t.Length, i => i > 0, Save, () => { });
     }
 
     /// <summary>

@@ -141,6 +141,8 @@ Column names are the Core property names in snake case. Values are shown the way
 
 **pickup** (2 rows): `index list items item_names`, row 0 the common list (18 items) and row 1 the rare list (11). Each list keeps its length.
 
+**opower** (64 rows, O-Powers 1-64; entry 0 is unused): `index name player_cost other_cost usability stage level_up efficacy duration`, the fields the upstream O-Power editor edits. `usability` must be 0, 2 or 254, the only values that editor accepts. The upstream editor notes that more research is needed for giving S and MAX O-Powers in game.
+
 ## Verification
 
 For each table, before it is committed:
