@@ -90,7 +90,7 @@ Tables and patches in the game executable (`tmhm`, `mart`, `pickup`, `opower`, `
 
 Spreadsheet files (`.tsv`) are tab-separated with a header row and open in Numbers or Excel; the columns are listed in [docs/data-commands-spec.md](docs/data-commands-spec.md). Name columns are only for reading: edit the number columns. `import` checks every row before writing anything, reports errors by line and column, accepts files with only the rows you changed, and writes only entries whose data changed.
 
-Run `pk3ds <group> <command> --help` for a command's arguments. Results go to stdout and progress to stderr; the exit code is 0 on success, 1 on failure and 2 for a usage error. Inputs must be decrypted dumps.
+Run `pk3ds <group> <command> --help` for a command's arguments. Results go to stdout and progress to stderr; the exit code is 0 on success, 1 on failure and 2 for a usage error. Inputs must be decrypted dumps, or `.3ds` files pk3DS built (those are fixed-key encrypted, and extraction decrypts them).
 
 ```
 dotnet run --project pk3DS.Cli -- ncch extract game.cxi out

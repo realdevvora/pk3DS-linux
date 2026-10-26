@@ -56,6 +56,5 @@ What was fixed is listed in [differences-from-upstream.md](differences-from-upst
 - One unchecked `Stream.Read` remains in `RomFS.MakeRomFSData`; it fills a buffer that is never used.
 - `pk3DS.WinForms/GarcUtil.cs` still uses the removed static GARC events, and every other WinForms call site still passes `ProgressBar` / `RichTextBox`; they need an `IProgressSink` adapter.
 - `NCSD.ExtractCXIfromNCSD` hardcodes the first partition offset to `0x4000` instead of reading it from the header.
-- `rom build` output uses fixed-crypto (zero key) encryption, so `ncsd extract` cannot read a `.3ds` that pk3DS itself built.
 - Not yet exposed by the CLI: `SARC`, `DARC`, `ALYT`, `Exheader` info, move tutors (the upstream editor says its edits do not work in game), the title screen and icon editors (image layer), and the X/Y and Gen 7 editors. Everything else in the [roadmap](roadmap.md) is in Core.
 - The text writer (`TextFile`) does not reproduce the original bytes: it always terminates and pads each line, writes the line-table flag word as 0 (the original has non-zero values such as `4` on some lines), and trims each line. The decoded text round-trips exactly (160 of the 172 files in a test edit; the other 12 only lost a leading space), but whether the flag word matters in game is unverified. `text import` therefore leaves unchanged files alone.

@@ -138,9 +138,36 @@ public class NCCH
             _ = fs.Read(plainregion, 0, plainregion.Length);
         }
 
+        _ = Decryptor(1); // refuse a console-key encrypted NCCH before writing anything
         ExtractExheader(NCCH_PATH, outputDirectory, progress);
         ExtractExeFS(NCCH_PATH, outputDirectory, progress);
         ExtractRomFS(NCCH_PATH, outputDirectory, progress);
+    }
+
+    private const byte FixedCryptoFlag = 1;
+    private const byte NoCryptoFlag = 4;
+
+    /// <summary>
+    /// The decryptor of a section (1 exheader, 2 ExeFS, 3 RomFS), or null if the NCCH is not encrypted. A ROM that rom build wrote is
+    /// encrypted with the all-zero fixed key, counted from the program ID, as <see cref="CTRUtil"/> writes it; CTR mode decrypts the same way.
+    /// </summary>
+    private AesCtr Decryptor(int section)
+    {
+        byte flags = Header.Flags[7];
+        if ((flags & NoCryptoFlag) != 0)
+            return null;
+        if ((flags & FixedCryptoFlag) == 0)
+            throw new InvalidDataException("This NCCH is encrypted with a console key; extract a decrypted dump instead.");
+        return new AesCtr(new byte[0x10], Header.ProgramId, (ulong)section << 56);
+    }
+
+    private static byte[] Decrypt(AesCtr aes, byte[] data)
+    {
+        if (aes == null)
+            return data;
+        byte[] plain = new byte[data.Length];
+        aes.TransformBlock(data, 0, data.Length, plain, 0);
+        return plain;
     }
 
     private void ExtractExheader(string NCCH_PATH, string outputDirectory, IProgressSink progress = null)
@@ -155,6 +182,7 @@ public class NCCH
             _ = fs.Read(exheaderbytes, 0, exheaderbytes.Length);
         }
 
+        exheaderbytes = Decrypt(Decryptor(1), exheaderbytes);
         File.WriteAllBytes(exheaderpath, exheaderbytes);
         Exheader = new Exheader(exheaderpath);
     }
@@ -172,6 +200,7 @@ public class NCCH
             _ = fs.Read(exefsbytes, 0, exefsbytes.Length);
         }
 
+        exefsbytes = Decrypt(Decryptor(2), exefsbytes);
         File.WriteAllBytes(exefsbinpath, exefsbytes);
         ExeFS.UnpackExeFS(exefsbinpath, exefspath);
         File.Delete(exefsbinpath);
@@ -184,6 +213,7 @@ public class NCCH
         string romfspath = Path.Combine(outputDirectory, "romfs");
         byte[] romfsBytes = new byte[MEDIA_UNIT_SIZE];
 
+        var aes = Decryptor(3);
         using (FileStream ncchstream = new(NCCH_PATH, FileMode.Open, FileAccess.Read),
                romfsstream = new(romfsbinpath, FileMode.Create, FileAccess.Write))
         {
@@ -192,7 +222,8 @@ public class NCCH
             for (int i = 0; i < Header.RomfsSize; i++)
             {
                 _ = ncchstream.Read(romfsBytes, 0, romfsBytes.Length);
-                romfsstream.Write(romfsBytes, 0, romfsBytes.Length);
+                byte[] plain = Decrypt(aes, romfsBytes); // the counter carries on from block to block
+                romfsstream.Write(plain, 0, plain.Length);
                 progress?.Step();
             }
         }
