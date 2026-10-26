@@ -50,6 +50,10 @@ How the changes were checked: the rebuilt RomFS and ExeFS, all 298 GARCs and all
 | ORAS wild encounter save | `RSWE` rewrote the table as 0x102 bytes, clearing the 14 bytes after the 61 slots (non-zero in 10 retail tables) | Only the 61 slots are written, to the map and to the DexNav copy |
 | `TableRandomizers`, randomizer option records | The randomize buttons read their settings from checkboxes in each form | In Core; the option defaults are the forms' starting values |
 | `MoveInfoRandomizer` | Move randomization lived in `MoveEditor6` and was meant to skip Struggle (165) and Curse (174), but skipped moves 166 and 175 because its list starts at move 1 | In Core (the class was an empty stub); skips Struggle and Curse |
+| `Randomizer`, `Legal.GetMegaDictionary` | Lived in `pk3DS.WinForms` (`Legality/Randomizer.cs`, `GiftEditor6`) | Copied into Core unchanged, except that `GetRandomItemList` takes the `GameConfig`; the WinForms files are untouched, as for every editor so far |
+| `TrainerRandomizer6` | `RSTE` decided whether a trainer keeps custom moves and held items from the checkboxes of whichever trainer was on screen | In Core; each trainer's own flags are used |
+| `WildRandomizerORAS` | Lived in `RSWE` | In Core, same algorithm (at most 18 species per map for the DexNav) |
+| Wild encounter save of a map without a DexNav entry | `RSWE` skipped such a map | Refused with an error instead of overwriting the next map's DexNav data (no retail map is affected) |
 | Randomizer seed | Runs could not be repeated | `--seed` seeds `Util.Rand` (`Util.ReseedRand` already existed in Core); without it a run is random, as before |
 | `TypeEffectiveness6` | The type chart's offset lived in `TypeChart6`, next to the drawing code | The data part is in Core; drawing the chart stays with the deferred image code |
 | `Starters6` | The starter editor's offsets and gift mapping lived in the form | In Core |

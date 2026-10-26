@@ -212,6 +212,8 @@ public static class Commands
         Randomize<EvolutionRandomizerOptions>("evolve-every-level", "Make every Pokémon evolve into a random species at every level up", TableRandomizers.EvolveEveryLevel),
         Randomize<NoRandomizerOptions>("trade-evolutions", "Replace trade evolutions with level-up evolutions (not random)", (c, _) => TableRandomizers.RemoveTradeEvolutions(c)),
         Randomize<MoveRandomizerOptions>("move", "Randomize move types and/or damage categories", TableRandomizers.Moves),
+        Randomize<TrainerRandomizerOptions>("trainer", "Randomize trainers: teams, moves, items, classes, AI and prizes", TableRandomizers.Trainers),
+        Randomize<WildRandomizerOptions>("wild", "Randomize Omega Ruby / Alpha Sapphire wild encounters", TableRandomizers.Wild),
 
         new("shiny", "info", GameOptions.Synopsis, "Show the shiny rate patch in code.bin (needs a decompressed code.bin)",
             GameOptions.ValueOptions, a =>
@@ -359,7 +361,7 @@ public static class Commands
         string[] names = [.. properties.Select(p => KebabCase(p.Name))];
         var defaults = new T();
         string usage = string.Join(' ', [GameOptions.Synopsis, "[--seed <n>]",
-            .. properties.Select((p, i) => $"[--{names[i]} {(p.PropertyType == typeof(bool) ? "yes|no" : "<n>")} ({FormatOption(p.GetValue(defaults))})]")]);
+            .. properties.Select((p, i) => $"[--{names[i]} {OptionValues(p.PropertyType)} ({FormatOption(p.GetValue(defaults))})]")]);
         string[] valueOptions = [.. GameOptions.ValueOptions, "seed", .. names];
         return new("randomize", name, usage, summary, valueOptions, a =>
         {
@@ -390,6 +392,8 @@ public static class Commands
                 _ => throw new UsageException($"--{name} takes yes or no, not '{value}'."),
             };
         }
+        if (type.IsEnum && Enum.GetNames(type).FirstOrDefault(n => KebabCase(n) == value) is { } member)
+            return Enum.Parse(type, member);
         if (type == typeof(int) && int.TryParse(value, out int i) && i >= 0)
             return i;
         if (type == typeof(decimal) && decimal.TryParse(value, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out decimal d))
@@ -397,7 +401,15 @@ public static class Commands
         throw new UsageException($"Invalid value '{value}' for --{name}.");
     }
 
-    private static string FormatOption(object value) => value is bool b ? (b ? "yes" : "no") : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture);
+    private static string OptionValues(Type type) =>
+        type == typeof(bool) ? "yes|no" : type.IsEnum ? string.Join('|', Enum.GetNames(type).Select(KebabCase)) : "<n>";
+
+    private static string FormatOption(object value) => value switch
+    {
+        bool b => b ? "yes" : "no",
+        Enum e => KebabCase(e.ToString()),
+        _ => Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture),
+    };
 
     /// <summary>StatHp -> stat-hp, STABPercent -> stab-percent, FourMovesAtLevel1 -> four-moves-at-level-1.</summary>
     private static string KebabCase(string name)

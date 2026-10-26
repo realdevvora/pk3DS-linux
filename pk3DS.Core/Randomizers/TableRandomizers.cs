@@ -186,6 +186,21 @@ public static class TableRandomizers
         return config.SaveMoves();
     }
 
+    public static int Trainers(GameConfig config, TrainerRandomizerOptions o)
+    {
+        RequireORAS(config);
+        new TrainerRandomizer6(config, o).Execute();
+        return config.SaveTrainers();
+    }
+
+    public static int Wild(GameConfig config, WildRandomizerOptions o)
+    {
+        RequireORAS(config);
+        config.InitializeWildEncounters();
+        new WildRandomizerORAS(config, config.WildEncounters, o).Execute();
+        return config.SaveWildEncounters();
+    }
+
     private static void RequireORAS(GameConfig config)
     {
         if (!config.ORAS)

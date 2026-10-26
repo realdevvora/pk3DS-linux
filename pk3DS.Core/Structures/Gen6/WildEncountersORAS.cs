@@ -75,6 +75,8 @@ public sealed class WildEncountersORAS
             byte[] table = WriteTable(Tables[i]);
             if (table.AsSpan().SequenceEqual(maps[i].AsSpan(tableOffsets[i], TableSize)))
                 continue;
+            if (NeedsInsertion(dexNav, i))
+                throw new InvalidDataException($"Map {i} has no DexNav entry; pk3DS does not save encounters for such a map.");
             byte[] map = (byte[])maps[i].Clone();
             table.CopyTo(map, tableOffsets[i]);
             result[i] = Compress(map);
@@ -83,6 +85,14 @@ public sealed class WildEncountersORAS
         }
         result[^1] = dexNav;
         return (result, changed);
+    }
+
+    /// <summary>RSWE.NeedsInsertion: the map has no table in the DexNav copy.</summary>
+    private static bool NeedsInsertion(byte[] dexNav, int map)
+    {
+        if (map != 535) // Hardcoded in RSWE
+            return BitConverter.ToUInt32(dexNav, (map + 2) * 4) == BitConverter.ToUInt32(dexNav, (map + 1) * 4);
+        return BitConverter.ToUInt32(dexNav, (map + 1) * 4) == dexNav.Length;
     }
 
     private static Slot[] ReadTable(byte[] data, int offset) =>
