@@ -69,12 +69,18 @@ public sealed partial class TablePageViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsBusy { get; set; }
 
-    private void Load()
+    [ObservableProperty]
+    public partial TableRow SelectedRow { get; set; }
+
+    /// <summary>The trainer team table, whose slots can be added and removed.</summary>
+    public bool IsTeamTable => Table == DataTable.TrainerPokemon;
+
+    private void Load(bool keepChanges = false)
     {
         Columns = [.. Enumerable.Range(0, view.ColumnCount).Select(c => (view.ColumnName(c), view.IsReadOnly(c)))];
         all = [.. Enumerable.Range(0, view.RowCount).Select(r => new TableRow(this, r))];
         ApplyFilter();
-        HasChanges = false;
+        HasChanges = keepChanges && HasChanges;
     }
 
     partial void OnFilterChanged(string value) => ApplyFilter();
@@ -150,6 +156,39 @@ public sealed partial class TablePageViewModel : ObservableObject
         Load();
     }
 
+    /// <summary>Adds an empty Pokémon to the team of the selected row's trainer.</summary>
+    [RelayCommand]
+    private void AddSlot() => ChangeTeam((trainer, _) => trainer.AddPokemon(), "Added a slot to trainer {0}");
+
+    /// <summary>Removes the selected row's slot from its trainer's team.</summary>
+    [RelayCommand]
+    private void RemoveSlot() => ChangeTeam((trainer, slot) => trainer.RemovePokemon(slot), "Removed slot {1} of trainer {0}");
+
+    private void ChangeTeam(Action<Core.Structures.TrainerData6, int> change, string done)
+    {
+        if (SelectedRow == null)
+        {
+            Status = "Select a slot of the trainer first.";
+            return;
+        }
+        int trainer = int.Parse(view.Get(SelectedRow.Row, 0));
+        int slot = int.Parse(view.Get(SelectedRow.Row, 2));
+        try
+        {
+            change(main.Config.Trainers[trainer], slot);
+        }
+        catch (InvalidOperationException e)
+        {
+            Status = e.Message;
+            return;
+        }
+        view.RefreshRows();
+        HasChanges = true;
+        Load(keepChanges: true);
+        SelectedRow = Rows.FirstOrDefault(r => view.Get(r.Row, 0) == trainer.ToString());
+        Status = string.Format(done, trainer, slot) + " (not saved)";
+    }
+
     [RelayCommand]
     private async Task Export()
     {
@@ -194,6 +233,8 @@ public sealed partial class TablePageViewModel : ObservableObject
 public sealed class TableRow(TablePageViewModel page, int row) : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler PropertyChanged;
+
+    public int Row => row;
 
     public string this[int column]
     {

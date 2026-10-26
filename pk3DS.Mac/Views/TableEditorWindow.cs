@@ -42,6 +42,7 @@ public sealed class TableEditorWindow : Window
             CanUserReorderColumns = false,
             GridLinesVisibility = DataGridGridLinesVisibility.All,
             FrozenColumnCount = 1,
+            [!DataGrid.SelectedItemProperty] = new Binding(nameof(page.SelectedRow)) { Mode = BindingMode.TwoWay },
         };
         for (int c = 0; c < page.Columns.Count; c++)
         {
@@ -59,6 +60,11 @@ public sealed class TableEditorWindow : Window
         toolbar.Children.Add(new TextBox { Watermark = "Filter", Width = 220, [!TextBox.TextProperty] = new Binding(nameof(page.Filter)) { Mode = BindingMode.TwoWay } });
         toolbar.Children.Add(new Button { Content = "Save", Command = page.SaveCommand, [!IsEnabledProperty] = new Binding(nameof(page.HasChanges)) });
         toolbar.Children.Add(new Button { Content = "Revert", Command = page.RevertCommand, [!IsEnabledProperty] = new Binding(nameof(page.HasChanges)) });
+        if (page.IsTeamTable)
+        {
+            toolbar.Children.Add(new Button { Content = "Add slot", Command = page.AddSlotCommand });
+            toolbar.Children.Add(new Button { Content = "Remove slot", Command = page.RemoveSlotCommand });
+        }
         toolbar.Children.Add(new Button { Content = "Export spreadsheet…", Command = page.ExportCommand });
         toolbar.Children.Add(new Button { Content = "Import spreadsheet…", Command = page.ImportCommand });
         foreach (var button in vm.Randomizers)

@@ -1130,6 +1130,12 @@ public sealed class DataTableView
         return changed;
     }
 
+    /// <summary>
+    /// Rebuilds the rows from the loaded data, keeping unsaved edits; for the team table after <see cref="Structures.TrainerData6.AddPokemon"/>
+    /// or <see cref="Structures.TrainerData6.RemovePokemon"/>.
+    /// </summary>
+    public void RefreshRows() => Load();
+
     /// <summary>Discards edits that were not saved.</summary>
     public void Revert()
     {

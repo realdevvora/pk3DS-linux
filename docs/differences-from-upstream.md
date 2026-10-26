@@ -67,6 +67,7 @@ How the changes were checked: the rebuilt RomFS and ExeFS, all 298 GARCs and all
 | Temporary files of `RomFS.BuildRomFS` and `CTRUtil.BuildROM` | `tempRomFS.bin`, `romfs.bin` and `exefs.bin` were written to the working directory | Written next to the output file (`<out>.tmp`, `<out>.romfs.tmp`, `<out>.exefs.tmp`) and deleted as before, so a build works from any directory |
 | `GameBackup.BackupFiles` / `RestoreFiles` | Always used a `backup` folder in the working directory | Take an optional backup root; without one, the same `backup` folder |
 | `BLZCoder` and `GameBackup` messages | Always written to the console | Written to the progress sink's log when one is given (otherwise to the console, as before) |
+| `TrainerData6.AddPokemon` / `RemovePokemon` | RSTE changed a team's size with its Pokémon-count box: new slots started empty, fewer slots dropped the last ones, and a team kept at least one | In Core; a new slot starts empty and a team keeps 1-6, as in RSTE; any slot can be removed (the slots after it move up) |
 | `GameConfig.Open` | Game detection from the RomFS file count lived in `Main` (and in the CLI) | In Core |
 | `DataTableFile.Open` / `DataTableView` | - | Editors get the spreadsheet commands' columns, checks and save by row and column |
 | `GameConfig.EggMoves` and `InitializeEggMoves`, loaded by `InitializeAll` | Egg moves were only read inside the egg move editor | Loaded like the other tables |

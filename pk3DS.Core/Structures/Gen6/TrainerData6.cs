@@ -78,6 +78,26 @@ public class TrainerData6
         return ms.ToArray();
     }
 
+    /// <summary>Adds a Pokémon at the end of the team, starting empty as a new slot does in RSTE.</summary>
+    /// <returns>The new slot's index</returns>
+    public int AddPokemon()
+    {
+        if (Team.Length >= 6)
+            throw new InvalidOperationException("A team holds at most 6 Pokémon.");
+        Team = [.. Team, new Pokemon(new byte[100], false, false)];
+        NumPokemon = (byte)Team.Length;
+        return Team.Length - 1;
+    }
+
+    /// <summary>Removes the Pokémon in a slot; the slots after it move up. A team keeps at least one, as in RSTE ("No empty teams!").</summary>
+    public void RemovePokemon(int slot)
+    {
+        if (Team.Length <= 1)
+            throw new InvalidOperationException("A team needs at least one Pokémon.");
+        Team = [.. Team.Where((_, i) => i != slot)];
+        NumPokemon = (byte)Team.Length;
+    }
+
     public byte[] WriteTeam()
     {
         return Team.Aggregate(Array.Empty<byte>(), (i, pkm) => [.. i, .. pkm.Write(Item, Moves)]);
