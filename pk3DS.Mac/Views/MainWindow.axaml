@@ -1,0 +1,59 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:pk3DS.Mac.ViewModels"
+        x:Class="pk3DS.Mac.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="{Binding Title}"
+        Width="720" Height="520" MinWidth="560" MinHeight="420">
+  <DockPanel>
+    <Menu DockPanel.Dock="Top" IsEnabled="{Binding IsIdle}">
+      <MenuItem Header="_File">
+        <MenuItem Header="_Open game folder…" Command="{Binding OpenGameCommand}" InputGesture="Cmd+O" HotKey="Cmd+O" />
+        <MenuItem Header="_Extract .3ds / .cxi…" Command="{Binding ExtractRomCommand}" />
+        <Separator />
+        <MenuItem Header="_Build .3ds…" Command="{Binding BuildRomCommand}" IsEnabled="{Binding IsGameOpen}" />
+      </MenuItem>
+      <MenuItem Header="_Tools" IsEnabled="{Binding IsGameOpen}">
+        <MenuItem Header="_Decompress code.bin" Command="{Binding DecompressCodeBinCommand}" />
+        <MenuItem Header="_Compress code.bin" Command="{Binding CompressCodeBinCommand}" />
+        <MenuItem Header="Update CRO _hashes" Command="{Binding UpdateCroHashesCommand}" />
+        <Separator />
+        <MenuItem Header="_Restore original files…" Command="{Binding RestoreOriginalsCommand}" />
+      </MenuItem>
+    </Menu>
+
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="8,4" Spacing="8">
+      <TextBlock Text="Language" VerticalAlignment="Center" />
+      <ComboBox ItemsSource="{x:Static vm:MainViewModel.Languages}" SelectedIndex="{Binding Language}" IsEnabled="{Binding IsIdle}" />
+      <ProgressBar Width="240" Maximum="{Binding ProgressMax}" Value="{Binding ProgressValue}" IsIndeterminate="{Binding IsBusy}" VerticalAlignment="Center" />
+      <TextBlock Text="code.bin decompressed" IsVisible="{Binding CodeBinDecompressed}" VerticalAlignment="Center" Foreground="Gray" />
+    </StackPanel>
+
+    <TabControl x:Name="Tabs" Margin="8">
+      <TabItem Header="RomFS" IsEnabled="{Binding IsGameOpen}">
+        <WrapPanel x:Name="RomFSButtons" Margin="4" />
+      </TabItem>
+      <TabItem Header="ExeFS" IsEnabled="{Binding IsGameOpen}">
+        <StackPanel>
+          <TextBlock Margin="4" Foreground="Gray" TextWrapping="Wrap" IsVisible="{Binding !CodeBinDecompressed}"
+                     Text="These tables are in code.bin, which is compressed. Decompress it first (Tools > Decompress code.bin), as pk3DS requires." />
+          <WrapPanel x:Name="ExeFSButtons" Margin="4" IsEnabled="{Binding CodeBinDecompressed}" />
+        </StackPanel>
+      </TabItem>
+      <TabItem Header="CRO" IsEnabled="{Binding IsGameOpen}">
+        <StackPanel>
+          <TextBlock Margin="4" Foreground="Gray" TextWrapping="Wrap"
+                     Text="After editing a CRO, update its hashes (Tools > Update CRO hashes) if your console checks them." />
+          <WrapPanel x:Name="CROButtons" Margin="4" />
+        </StackPanel>
+      </TabItem>
+      <TabItem Header="Output">
+        <DockPanel>
+          <Button DockPanel.Dock="Bottom" HorizontalAlignment="Right" Content="Clear" Command="{Binding ClearLogCommand}" Margin="0,4,0,0" />
+          <TextBox Text="{Binding Log}" IsReadOnly="True" TextWrapping="Wrap" FontFamily="Menlo,monospace" FontSize="11"
+                   CaretIndex="{Binding Log.Length}" />
+        </DockPanel>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>
