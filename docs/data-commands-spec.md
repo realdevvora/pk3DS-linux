@@ -143,6 +143,10 @@ Column names are the Core property names in snake case. Values are shown the way
 
 **opower** (64 rows, O-Powers 1-64; entry 0 is unused): `index name player_cost other_cost usability stage level_up efficacy duration`, the fields the upstream O-Power editor edits. `usability` must be 0, 2 or 254, the only values that editor accepts. The upstream editor notes that more research is needed for giving S and MAX O-Powers in game.
 
+**static** (59 rows): `index species species_name form level held_item item_name ability gender shiny_lock iv3`, the fields `StaticEncounterEditor6` edits. `held_item` 0 means none (stored as -1). Ability is 0-3 (any, 1, 2, hidden) and gender 0-2 (random, male, female).
+
+**gift** (37 rows): `index species species_name form level held_item item_name nature ability gender shiny_lock iv1 iv2 iv3 iv4 iv5 iv6`, the fields `GiftEditor6` edits. `nature`, `ability` (-1 any, 0-2) and the IVs (in stored order) use -1 for random. `held_item` 0 means none and is stored as -1. Gifts 0-2 are the starters; changing them also needs the starter command so the selection screen matches.
+
 ## Verification
 
 For each table, before it is committed:

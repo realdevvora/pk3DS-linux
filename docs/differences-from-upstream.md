@@ -45,6 +45,8 @@ How the changes were checked: the rebuilt RomFS and ExeFS, all 298 GARCs and all
 | `GameConfig.MegaEvolutions`, `InitializeMegaEvolutions`, `SaveMegaEvolutions` | Read and saved by `Main` around the Mega Evolution editor | In Core, like the other tables |
 | `GameConfig.Trainers`, `InitializeTrainers`, `SaveTrainers` (Gen 6) | Read and saved by `Main` around `RSTE`; every trainer opened in the editor was rewritten | In Core; only changed trainers are written. Entry 0, a placeholder RSTE never opened, is not loaded. Gen 7 trainers (`TrainerData7`) are not covered yet |
 | `GameConfig.MaisonTrainers` / `MaisonPokemon` / `SuperMaisonTrainers` / `SuperMaisonPokemon`, `InitializeMaison`, `SaveMaisonTrainers` / `SaveMaisonPokemon` (Gen 6) | Read and saved by `Main` around `MaisonEditor6` | In Core; only changed entries are written |
+| `CroFile`, `FieldEncounters6` | The static encounter and gift editors read and wrote `DllField.cro` at hardcoded offsets inside the forms | In Core, same offsets |
+| Gift held item "none" | `GiftEditor6` showed the stored -1 as "(None)" and wrote 0 back for every gift opened | Written as -1, as the game stores it |
 | `ShinyRate6` | The shiny rate patch lived in the form. It searched for the "always shiny" switch without checking the result, so a missing pattern read a byte near the start of the file | In Core; a missing switch is reported as not available |
 | `OPower6` | The O-Power editor's offset and field layout lived in the form | In Core |
 | `Pickup6` | The pickup editor's offset and list lengths lived in the form | In Core |

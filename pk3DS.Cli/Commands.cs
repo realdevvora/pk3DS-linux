@@ -198,6 +198,9 @@ public static class Commands
         .. DataCommands("pickup", DataTable.Pickup, "the items the Pickup ability finds (needs a decompressed code.bin)"),
         .. DataCommands("opower", DataTable.OPower, "O-Power costs and effects (needs a decompressed code.bin)"),
 
+        .. DataCommands("static", DataTable.StaticEncounter, "static encounters: legendaries and other fixed Pokémon (DllField.cro)"),
+        .. DataCommands("gift", DataTable.Gift, "gift Pokémon, including the starters (DllField.cro)"),
+
         new("shiny", "info", GameOptions.Synopsis, "Show the shiny rate patch in code.bin (needs a decompressed code.bin)",
             GameOptions.ValueOptions, a =>
             {

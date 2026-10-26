@@ -27,6 +27,8 @@ public enum DataTable
     Mart,
     Pickup,
     OPower,
+    StaticEncounter,
+    Gift,
 }
 
 /// <summary>
@@ -178,6 +180,8 @@ public static class DataTableFile
             DataTable.Mart => MartTable(config),
             DataTable.Pickup => PickupTable(config),
             DataTable.OPower => OPowerTable(config),
+            DataTable.StaticEncounter => StaticEncounterTable(config),
+            DataTable.Gift => GiftTable(config),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
     }
@@ -691,6 +695,81 @@ public static class DataTableFile
             return changed;
         }
         return new(columns, t.Length, i => i > 0, Save, () => { });
+    }
+
+    /// <summary>The static encounters (legendaries and other fixed Pokémon), edited in DllField.cro.</summary>
+    private static Table StaticEncounterTable(GameConfig config)
+    {
+        var field = new CroFile(config.RomFS, FieldEncounters6.FileName);
+        var t = FieldEncounters6.ReadStatic(field, config.ORAS);
+        string[] species = config.GetText(TextName.SpeciesNames);
+        string[] items = config.GetText(TextName.ItemNames);
+
+        // The fields StaticEncounterEditor6 edits. held_item 0 means none (stored as -1).
+        Column[] columns =
+        [
+            Index(),
+            Number("species", i => t[i].Species, (i, v) => t[i].Species = (ushort)v, 0, config.MaxSpeciesID),
+            Text("species_name", i => species[t[i].Species]),
+            Number("form", i => t[i].Form, (i, v) => t[i].Form = (byte)v, 0, 255),
+            Number("level", i => t[i].Level, (i, v) => t[i].Level = (byte)v, 0, 100),
+            Number("held_item", i => t[i].HeldItem, (i, v) => t[i].HeldItem = v, 0, config.Info.MaxItemID),
+            Text("item_name", i => t[i].HeldItem == 0 ? "" : items[t[i].HeldItem]),
+            Number("ability", i => t[i].Ability, (i, v) => t[i].Ability = v, 0, 3),
+            Number("gender", i => t[i].Gender, (i, v) => t[i].Gender = v, 0, 2),
+            Flag("shiny_lock", i => t[i].ShinyLock, (i, v) => t[i].ShinyLock = v),
+            Flag("iv3", i => t[i].IV3, (i, v) => t[i].IV3 = v),
+        ];
+        int Save()
+        {
+            var original = FieldEncounters6.ReadStatic(field, config.ORAS);
+            int changed = t.Where((z, i) => !z.Data.AsSpan().SequenceEqual(original[i].Data)).Count();
+            FieldEncounters6.WriteStatic(field, config.ORAS, t);
+            field.Save();
+            return changed;
+        }
+        return new(columns, t.Length, _ => true, Save, () => { });
+    }
+
+    /// <summary>The gift Pokémon (including the starters, gifts 0-2), edited in DllField.cro.</summary>
+    private static Table GiftTable(GameConfig config)
+    {
+        var field = new CroFile(config.RomFS, FieldEncounters6.FileName);
+        var t = FieldEncounters6.ReadGifts(field, config.ORAS);
+        string[] species = config.GetText(TextName.SpeciesNames);
+        string[] items = config.GetText(TextName.ItemNames);
+        string[] natures = config.GetText(TextName.Natures);
+
+        // The fields GiftEditor6 edits. held_item 0 means none, stored as -1 as in the game (GiftEditor6 wrote 0).
+        // nature, ability and the IVs use -1 for random / any, as in the editor.
+        var columns = new List<Column>
+        {
+            Index(),
+            Number("species", i => t[i].Species, (i, v) => t[i].Species = (ushort)v, 0, config.MaxSpeciesID),
+            Text("species_name", i => species[t[i].Species]),
+            Number("form", i => t[i].Form, (i, v) => t[i].Form = (byte)v, 0, 255),
+            Number("level", i => t[i].Level, (i, v) => t[i].Level = (byte)v, 0, 100),
+            Number("held_item", i => Math.Max(t[i].HeldItem, 0), (i, v) => t[i].HeldItem = v == 0 ? -1 : v, 0, config.Info.MaxItemID),
+            Text("item_name", i => t[i].HeldItem <= 0 ? "" : items[t[i].HeldItem]),
+            Number("nature", i => t[i].Nature, (i, v) => t[i].Nature = (sbyte)v, -1, natures.Length - 1),
+            Number("ability", i => t[i].Ability, (i, v) => t[i].Ability = (sbyte)v, -1, 2),
+            Number("gender", i => t[i].Gender, (i, v) => t[i].Gender = (sbyte)v, 0, 2),
+            Flag("shiny_lock", i => t[i].ShinyLock, (i, v) => t[i].ShinyLock = v),
+        };
+        for (int k = 0; k < 6; k++)
+        {
+            int s = k;
+            columns.Add(Number($"iv{s + 1}", i => t[i].IVs[s], (i, v) => t[i].IVs[s] = (sbyte)v, -1, 31));
+        }
+        int Save()
+        {
+            var original = FieldEncounters6.ReadGifts(field, config.ORAS);
+            int changed = t.Where((z, i) => !z.Write().AsSpan().SequenceEqual(original[i].Write())).Count();
+            FieldEncounters6.WriteGifts(field, config.ORAS, t);
+            field.Save();
+            return changed;
+        }
+        return new([.. columns], t.Length, _ => true, Save, () => { });
     }
 
     /// <summary>

@@ -39,7 +39,7 @@ Each task is one branch and one pull request, verified like the data tables (unc
 
 ### Phase 3: CRO tables
 
-10. **Static and gift encounters** (`StaticEncounterEditor6`, `GiftEditor6`), both in `DllField.cro`, using the existing `EncounterStatic6` / `EncounterGift6`. In game: a legendary's level or a gift Pokémon.
+10. **Static and gift encounters** *(done)* (`StaticEncounterEditor6`, `GiftEditor6`), both in `DllField.cro`, using the existing `EncounterStatic6` / `EncounterGift6`. In game: a legendary's level or a gift Pokémon.
 11. **Starters** (`StarterEditor6`): `DllPoke3Select.cro` plus `DllField.cro`. In game: the starter choice screen.
 12. **Type chart data** (`TypeChart6`, `DllBattle.cro`). Only the 18 × 18 effectiveness table, not the chart image. Low priority.
 
