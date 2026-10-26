@@ -139,6 +139,8 @@ Column names are the Core property names in snake case. Values are shown the way
 
 **mart** (24 rows): `index location items item_names`. `location` is the editor's name for the mart. `items` must list as many items as the mart has slots, because the slots are fixed in the executable.
 
+**pickup** (2 rows): `index list items item_names`, row 0 the common list (18 items) and row 1 the rare list (11). Each list keeps its length.
+
 ## Verification
 
 For each table, before it is committed:

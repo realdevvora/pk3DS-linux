@@ -47,7 +47,7 @@ Below are some images of how the editor should look when you run it.
 This fork separates pk3DS's file tooling from the Windows UI so it can run on macOS and Linux:
 
 - **`pk3DS.Core`** is a plain `net10.0` class library with no Windows dependency. Long-running operations report through an `IProgressSink` instead of WinForms `ProgressBar` / `RichTextBox` controls, and `null` is accepted. The image code that needs `System.Drawing` is excluded from the build for now.
-- **`pk3DS.Cli`** builds the `pk3ds` command. It covers the game container, archive, compression and hashing operations, plus game text and the species, level-up move, egg move, move, evolution, item, Mega Evolution, trainer, Battle Maison, TM/HM and Poké Mart tables; the rest of the data-editing code (encounters, trainers, randomizers and so on) is not exposed yet:
+- **`pk3DS.Cli`** builds the `pk3ds` command. It covers the game container, archive, compression and hashing operations, plus game text and the species, level-up move, egg move, move, evolution, item, Mega Evolution, trainer, Battle Maison, TM/HM, Poké Mart and Pickup tables; the rest of the data-editing code (encounters, trainers, randomizers and so on) is not exposed yet:
 
 | Command | What it does |
 |---|---|
@@ -71,6 +71,7 @@ This fork separates pk3DS's file tooling from the Windows UI so it can run on ma
 | `maisontrainer dump/import` and `maisonpoke dump/import` (`--super` for the Super Battle Maison) | Battle Maison trainers (class and the pool Pokémon they pick from) and the Pokémon pool (species, moves, EV spreads, nature, item) |
 | `tmhm dump <out.tsv>` / `tmhm import <in.tsv>` | The move each TM and HM teaches. Changing a TM's move also copies the move's description into the TM item's description |
 | `mart dump <out.tsv>` / `mart import <in.tsv>` | Poké Mart inventories, one row per mart; each mart keeps its number of item slots |
+| `pickup dump <out.tsv>` / `pickup import <in.tsv>` | The items the Pickup ability finds: a common list (18) and a rare list (11) |
 | `blz decode\|encode <file>...` | Bottom-LZ (de)compression in place |
 | `lzss compress\|decompress <in> <out>` | LZSS (de)compression |
 | `cro hash <crr> <croDir>` | Recompute CRO hashes and update the CRR |

@@ -194,6 +194,7 @@ public static class Commands
         .. DataCommands("maisonpoke", DataTable.MaisonPokemon, "the Battle Maison Pokémon pool", DataTable.SuperMaisonPokemon),
         .. DataCommands("tmhm", DataTable.TMHM, "the moves taught by TMs and HMs (needs a decompressed code.bin)"),
         .. DataCommands("mart", DataTable.Mart, "Poké Mart inventories (needs a decompressed code.bin)"),
+        .. DataCommands("pickup", DataTable.Pickup, "the items the Pickup ability finds (needs a decompressed code.bin)"),
 
         new("blz", "decode", "<file>...", "Decompress bottom-LZ files in place",
             NoOptions, a => Blz(a, "-d")),

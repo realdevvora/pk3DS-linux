@@ -25,6 +25,7 @@ public enum DataTable
     SuperMaisonPokemon,
     TMHM,
     Mart,
+    Pickup,
 }
 
 /// <summary>
@@ -174,6 +175,7 @@ public static class DataTableFile
             DataTable.SuperMaisonPokemon => new(MaisonPokemonColumns(config, true), config.SuperMaisonPokemon.Length, All, () => config.SaveMaisonPokemon(true), config.InitializeMaison),
             DataTable.TMHM => TMHMTable(config),
             DataTable.Mart => MartTable(config),
+            DataTable.Pickup => PickupTable(config),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
     }
@@ -611,6 +613,41 @@ public static class DataTableFile
             int changed = items.Where((z, i) => !z.SequenceEqual(mart.Items[i])).Count();
             items.CopyTo(mart.Items, 0);
             mart.Write(code);
+            code.Save();
+            return changed;
+        }
+        return new(columns, items.Length, _ => true, Save, () => { });
+    }
+
+    /// <summary>The Pickup item lists (row 0 common, row 1 rare), edited in code.bin. Each list keeps its length.</summary>
+    private static Table PickupTable(GameConfig config)
+    {
+        var code = CodeBin.Load(config.ExeFS);
+        var pickup = new Pickup6(code);
+        ushort[][] items = [(ushort[])pickup.Common.Clone(), (ushort[])pickup.Rare.Clone()];
+        string[] lists = ["common", "rare"];
+        string[] itemNames = config.GetText(TextName.ItemNames);
+        int maxItem = config.Info.MaxItemID;
+
+        Column[] columns =
+        [
+            Index(),
+            Text("list", i => lists[i]),
+            new("items", i => string.Join(' ', items[i]), (i, s) =>
+            {
+                int[] list = ParseList(s, 0, maxItem);
+                if (list.Length != items[i].Length)
+                    throw new FormatException($"the {lists[i]} list has {items[i].Length} slots, but {list.Length} items are listed.");
+                items[i] = [.. list.Select(z => (ushort)z)];
+            }),
+            Text("item_names", i => string.Join(", ", items[i].Select(z => itemNames[z]))),
+        ];
+        int Save()
+        {
+            int changed = (items[0].SequenceEqual(pickup.Common) ? 0 : 1) + (items[1].SequenceEqual(pickup.Rare) ? 0 : 1);
+            items[0].CopyTo(pickup.Common, 0);
+            items[1].CopyTo(pickup.Rare, 0);
+            pickup.Write(code);
             code.Save();
             return changed;
         }
