@@ -15,12 +15,21 @@ namespace pk3DS.Mac.ViewModels;
 public sealed record RandomizerButton(string Name, Func<MainViewModel, RandomizerViewModel> Create);
 
 /// <summary>An editor window over one or more data tables (for example trainers and their teams), one tab each.</summary>
-public sealed class TableEditorViewModel(MainViewModel main, string title, IEnumerable<(string Name, DataTable Table)> tables, IEnumerable<RandomizerButton> randomizers = null)
+public sealed class TableEditorViewModel
 {
-    public string Title { get; } = title;
-    public MainViewModel Main { get; } = main;
-    public IReadOnlyList<TablePageViewModel> Pages { get; } = [.. tables.Select(t => new TablePageViewModel(main, t.Name, t.Table))];
-    public IReadOnlyList<RandomizerButton> Randomizers { get; } = [.. randomizers ?? []];
+    public string Title { get; }
+    public MainViewModel Main { get; }
+    public IReadOnlyList<TablePageViewModel> Pages { get; }
+    public IReadOnlyList<RandomizerButton> Randomizers { get; }
+
+    public TableEditorViewModel(MainViewModel main, string title, IEnumerable<(string Name, DataTable Table)> tables, IEnumerable<RandomizerButton> randomizers = null)
+    {
+        Main = main;
+        Title = title;
+        Pages = [.. tables.Select(t => new TablePageViewModel(main, t.Name, t.Table))];
+        Randomizers = [.. randomizers ?? []];
+        TablePageViewModel.Link(Pages);
+    }
 
     /// <summary>Opens a randomizer; when it has run, the pages show the randomized data.</summary>
     public void Randomize(RandomizerButton button)
@@ -71,6 +80,31 @@ public sealed partial class TablePageViewModel : ObservableObject
 
     [ObservableProperty]
     public partial TableRow SelectedRow { get; set; }
+
+    /// <summary>Raised after this page saved, reverted or imported, which reloads the game's copy of its data.</summary>
+    public event Action DataReloaded;
+
+    /// <summary>
+    /// Pages over shared data (trainers and their teams) must re-read it after one of them saves, reverts or imports, because Core then
+    /// replaces the loaded objects. Re-reading keeps their unsaved edits.
+    /// </summary>
+    public static void Link(IReadOnlyList<TablePageViewModel> pages)
+    {
+        foreach (var page in pages)
+        {
+            page.DataReloaded += () =>
+            {
+                foreach (var other in pages.Where(p => p != page))
+                    other.RefreshFromLoaded();
+            };
+        }
+    }
+
+    private void RefreshFromLoaded()
+    {
+        view.RefreshRows();
+        Load(keepChanges: true);
+    }
 
     /// <summary>The trainer team table, whose slots can be added and removed.</summary>
     public bool IsTeamTable => Table == DataTable.TrainerPokemon;
@@ -127,6 +161,7 @@ public sealed partial class TablePageViewModel : ObservableObject
         {
             await Task.Run(() => changed = view.Save());
             Load();
+            DataReloaded?.Invoke();
             Status = $"Saved: {changed} entries changed";
             main.AppendLog($"{Name}: {changed} entries changed");
         }
@@ -146,6 +181,7 @@ public sealed partial class TablePageViewModel : ObservableObject
     {
         view.Revert();
         Load();
+        DataReloaded?.Invoke();
         Status = "Reverted";
     }
 
@@ -218,6 +254,7 @@ public sealed partial class TablePageViewModel : ObservableObject
         {
             int changed = DataTableFile.Import(main.Config, Table, path);
             Reload();
+            DataReloaded?.Invoke();
             Status = $"Imported {Path.GetFileName(path)}: {changed} entries changed";
             main.AppendLog($"{Name}: imported {Path.GetFileName(path)}, {changed} entries changed");
         }

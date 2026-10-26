@@ -402,7 +402,9 @@ public class GameConfig
             return 0;
         g.Files = d;
         g.Save();
-        InitializeMaison();
+        // Reload only this table, so unsaved edits of the other Maison tables are kept.
+        var reloaded = g.Files.Select(z => new Maison6.Trainer(z)).ToArray();
+        if (super) SuperMaisonTrainers = reloaded; else MaisonTrainers = reloaded;
         return changed;
     }
 
@@ -415,7 +417,9 @@ public class GameConfig
             return 0;
         g.Files = d;
         g.Save();
-        InitializeMaison();
+        // Reload only this table, so unsaved edits of the other Maison tables are kept.
+        var reloaded = g.Files.Select(z => new Maison6.Pokemon(z)).ToArray();
+        if (super) SuperMaisonPokemon = reloaded; else MaisonPokemon = reloaded;
         return changed;
     }
 
