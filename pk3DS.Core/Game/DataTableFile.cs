@@ -29,6 +29,7 @@ public enum DataTable
     OPower,
     StaticEncounter,
     Gift,
+    Starter,
 }
 
 /// <summary>
@@ -182,6 +183,7 @@ public static class DataTableFile
             DataTable.OPower => OPowerTable(config),
             DataTable.StaticEncounter => StaticEncounterTable(config),
             DataTable.Gift => GiftTable(config),
+            DataTable.Starter => StarterTable(config),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
     }
@@ -766,6 +768,37 @@ public static class DataTableFile
             var original = FieldEncounters6.ReadGifts(field, config.ORAS);
             int changed = t.Where((z, i) => !z.Write().AsSpan().SequenceEqual(original[i].Write())).Count();
             FieldEncounters6.WriteGifts(field, config.ORAS, t);
+            field.Save();
+            return changed;
+        }
+        return new([.. columns], t.Length, _ => true, Save, () => { });
+    }
+
+    /// <summary>The starter sets, edited in DllPoke3Select.cro and in the gifts of DllField.cro that give them.</summary>
+    private static Table StarterTable(GameConfig config)
+    {
+        var select = new CroFile(config.RomFS, Starters6.SelectFileName);
+        var field = new CroFile(config.RomFS, FieldEncounters6.FileName);
+        var starters = new Starters6(select, config.ORAS);
+        var t = starters.Species;
+        string[] sets = config.ORAS ? Starters6.SetNamesORAS : Starters6.SetNamesXY;
+        string[] species = config.GetText(TextName.SpeciesNames);
+
+        var columns = new List<Column> { Index(), Text("set", i => sets[i]) };
+        for (int k = 0; k < 3; k++)
+        {
+            int s = k;
+            columns.Add(Number($"starter{s + 1}", i => t[i][s], (i, v) => t[i][s] = (ushort)v, 0, config.MaxSpeciesID));
+        }
+        columns.Add(Text("starter_names", i => string.Join(", ", t[i].Select(z => species[z]))));
+        int Save()
+        {
+            var original = new Starters6(select, config.ORAS).Species;
+            int changed = t.Where((z, i) => !z.SequenceEqual(original[i])).Count();
+            if (changed == 0)
+                return 0;
+            starters.Write(select, field);
+            select.Save();
             field.Save();
             return changed;
         }

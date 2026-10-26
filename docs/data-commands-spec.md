@@ -147,6 +147,8 @@ Column names are the Core property names in snake case. Values are shown the way
 
 **gift** (37 rows): `index species species_name form level held_item item_name nature ability gender shiny_lock iv1 iv2 iv3 iv4 iv5 iv6`, the fields `GiftEditor6` edits. `nature`, `ability` (-1 any, 0-2) and the IVs (in stored order) use -1 for random. `held_item` 0 means none and is stored as -1. Gifts 0-2 are the starters; changing them also needs the starter command so the selection screen matches.
 
+**starter** (4 rows): `index set starter1 starter2 starter3 starter_names`. Import writes the species to the selection screen and to the gifts that give them, as `StarterEditor6` does.
+
 ## Verification
 
 For each table, before it is committed:
