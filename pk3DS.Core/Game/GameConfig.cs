@@ -96,6 +96,35 @@ public class GameConfig
         }
     }
 
+    /// <summary>
+    /// Opens an extracted game: detects which game the RomFS holds from its number of data files, as pk3DS does, and loads it.
+    /// </summary>
+    /// <param name="romfs">Extracted RomFS folder (with the 'a' directory)</param>
+    /// <param name="exefs">Extracted ExeFS folder</param>
+    /// <param name="lang">Text language, 0-9 (2 is English)</param>
+    /// <exception cref="ArgumentException">The folders are not an extracted game, the game is not recognized, or the language is not available.</exception>
+    public static GameConfig Open(string romfs, string exefs, int lang)
+    {
+        if (!Directory.Exists(Path.Combine(romfs, "a")))
+            throw new ArgumentException($"'{romfs}' is not a RomFS folder (no 'a' directory).");
+        if (!Directory.Exists(exefs))
+            throw new ArgumentException($"ExeFS folder '{exefs}' does not exist.");
+        if (lang is < 0 or > 9)
+            throw new ArgumentException($"Invalid language '{lang}'; use 0-9 (2 is English).");
+
+        // Games are told apart by how many numbered files the 'a' tree holds.
+        int fileCount = Directory.GetFiles(Path.Combine(romfs, "a"), "*", SearchOption.AllDirectories)
+            .Count(f => Path.GetFileName(f).Length == 1);
+        var config = new GameConfig(fileCount);
+        if (config.Version == GameVersion.Invalid)
+            throw new ArgumentException($"Unrecognized game: found {fileCount} data files in '{Path.Combine(romfs, "a")}'.");
+        if ((config.XY || config.ORAS) && lang > 7)
+            throw new ArgumentException("Languages above 7 are not available in this game.");
+
+        config.Initialize(romfs, exefs, lang);
+        return config;
+    }
+
     public void Initialize(string romFSpath, string exeFSpath, int lang)
     {
         RomFS = romFSpath;
