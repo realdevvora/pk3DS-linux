@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using pk3DS.Core;
 using pk3DS.Core.CTR;
+using pk3DS.Core.Structures;
 
 namespace pk3DS.Cli;
 
@@ -196,6 +197,56 @@ public static class Commands
         .. DataCommands("mart", DataTable.Mart, "Poké Mart inventories (needs a decompressed code.bin)"),
         .. DataCommands("pickup", DataTable.Pickup, "the items the Pickup ability finds (needs a decompressed code.bin)"),
         .. DataCommands("opower", DataTable.OPower, "O-Power costs and effects (needs a decompressed code.bin)"),
+
+        new("shiny", "info", GameOptions.Synopsis, "Show the shiny rate patch in code.bin (needs a decompressed code.bin)",
+            GameOptions.ValueOptions, a =>
+            {
+                a.Expect(0);
+                a.RejectUnknown(GameOptions.ValueOptions);
+                var shiny = new ShinyRate6(CodeBin.Load(GameOptions.Load(a).ExeFS));
+                Console.WriteLine(shiny.IsOriginal ? "rerolls original (the game's own count)"
+                    : shiny.Rerolls is { } r ? $"rerolls {r} (~{ShinyRate6.Chance(r):P} per Pokémon)"
+                    : "rerolls patched with an unknown instruction");
+                Console.WriteLine($"always shiny {shiny.AlwaysShiny switch { true => "yes", false => "no", null => "not available" }}");
+                return true;
+            }),
+
+        new("shiny", "set", $"{GameOptions.Synopsis} [--rerolls <count> | --original] [--always yes|no]", "Patch the shiny rate in code.bin: a fixed PID reroll count, or the game's own; optionally make every Pokémon shiny",
+            [.. GameOptions.ValueOptions, "rerolls", "always"], a =>
+            {
+                a.Expect(0);
+                a.RejectUnknown([.. GameOptions.ValueOptions, "rerolls", "original", "always"]);
+                if (a.Has("rerolls") && a.Has("original"))
+                    throw new UsageException("Use either --rerolls or --original.");
+                if (!a.Has("rerolls") && !a.Has("original") && !a.Has("always"))
+                    throw new UsageException("Nothing to change: give --rerolls, --original or --always.");
+                var code = CodeBin.Load(GameOptions.Load(a).ExeFS);
+                var shiny = new ShinyRate6(code);
+                if (a.Get("rerolls") is { } value)
+                {
+                    if (!int.TryParse(value, out int rerolls) || rerolls < 1)
+                        throw new UsageException($"Invalid reroll count '{value}'.");
+                    int written = shiny.SetRerolls(rerolls);
+                    Console.WriteLine(written == rerolls ? $"rerolls {written}" : $"rerolls {written} (raised from {rerolls}, the next count the patch can encode)");
+                }
+                if (a.Has("original"))
+                {
+                    shiny.Restore();
+                    Console.WriteLine("rerolls original");
+                }
+                if (a.Get("always") is { } always)
+                {
+                    shiny.AlwaysShiny = always switch
+                    {
+                        "yes" => true,
+                        "no" => false,
+                        _ => throw new UsageException($"--always takes yes or no, not '{always}'."),
+                    };
+                    Console.WriteLine($"always shiny {always}");
+                }
+                Console.WriteLine(code.Save() ? "code.bin written" : "code.bin unchanged");
+                return true;
+            }),
 
         new("blz", "decode", "<file>...", "Decompress bottom-LZ files in place",
             NoOptions, a => Blz(a, "-d")),

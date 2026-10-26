@@ -73,6 +73,7 @@ This fork separates pk3DS's file tooling from the Windows UI so it can run on ma
 | `mart dump <out.tsv>` / `mart import <in.tsv>` | Poké Mart inventories, one row per mart; each mart keeps its number of item slots |
 | `pickup dump <out.tsv>` / `pickup import <in.tsv>` | The items the Pickup ability finds: a common list (18) and a rare list (11) |
 | `opower dump <out.tsv>` / `opower import <in.tsv>` | O-Powers 1-64: energy costs, usability, stage, level-up, efficacy, duration (the fields the pk3DS editor edits) |
+| `shiny info` / `shiny set [--rerolls <count> \| --original] [--always yes\|no]` | Show or patch the shiny rate: a fixed number of PID rerolls per Pokémon (a count the patch cannot encode is raised to the next it can, as in pk3DS), the game's own count, or every Pokémon shiny |
 | `blz decode\|encode <file>...` | Bottom-LZ (de)compression in place |
 | `lzss compress\|decompress <in> <out>` | LZSS (de)compression |
 | `cro hash <crr> <croDir>` | Recompute CRO hashes and update the CRR |
@@ -80,7 +81,7 @@ This fork separates pk3DS's file tooling from the Windows UI so it can run on ma
 
 Game-data commands take `--dir <folder>` (a folder holding the extracted `romfs` and `exefs`), or `--romfs` and `--exefs` separately, and `--lang <0-9>` (2 is English, the default). Text lines may contain bracketed control codes such as `[VAR ...]`; `text import` rejects malformed ones with the file name, skips files whose text you did not change, and trims leading and trailing spaces from each line, as pk3DS always has.
 
-Tables stored in the game executable (`tmhm`, `mart`, `pickup`) need a decompressed `exefs/.code.bin`, as in pk3DS: run `pk3ds blz decode` on it once, and `pk3ds blz encode` before `rom build` (about 75 seconds).
+Tables and patches in the game executable (`tmhm`, `mart`, `pickup`, `opower`, `shiny`) need a decompressed `exefs/.code.bin`, as in pk3DS: run `pk3ds blz decode` on it once, and `pk3ds blz encode` before `rom build` (about 75 seconds).
 
 Spreadsheet files (`.tsv`) are tab-separated with a header row and open in Numbers or Excel; the columns are listed in [docs/data-commands-spec.md](docs/data-commands-spec.md). Name columns are only for reading: edit the number columns. `import` checks every row before writing anything, reports errors by line and column, accepts files with only the rows you changed, and writes only entries whose data changed.
 

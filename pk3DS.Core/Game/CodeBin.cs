@@ -41,9 +41,10 @@ public sealed class CodeBin
     /// <summary>Finds a byte pattern the way the upstream editors do.</summary>
     /// <param name="pattern">Bytes to find</param>
     /// <param name="what">Name of the table, for the error message</param>
-    public int Find(byte[] pattern, string what)
+    /// <param name="start">Where to start searching; the table editors start at 0x400000</param>
+    public int Find(byte[] pattern, string what, int start = SearchStart)
     {
-        int offset = Util.IndexOfBytes(Data, pattern, SearchStart, 0);
+        int offset = Util.IndexOfBytes(Data, pattern, start, 0);
         if (offset < 0)
             throw new InvalidDataException($"Could not find the {what} in '{System.IO.Path.GetFileName(Path)}'.");
         return offset;
