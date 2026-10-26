@@ -23,7 +23,7 @@ public partial class MainViewModel(IDialogs dialogs) : ObservableObject
     public IDialogs Dialogs { get; } = dialogs;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsGameOpen), nameof(Title))]
+    [NotifyPropertyChangedFor(nameof(IsGameOpen), nameof(Title), nameof(NeedsDecompression))]
     public partial GameConfig Config { get; private set; }
 
     /// <summary>The folder holding the extracted romfs and exefs.</summary>
@@ -49,7 +49,10 @@ public partial class MainViewModel(IDialogs dialogs) : ObservableObject
 
     /// <summary>The tables in code.bin can only be edited while it is decompressed, as in pk3DS.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NeedsDecompression))]
     public partial bool CodeBinDecompressed { get; private set; }
+
+    public bool NeedsDecompression => IsGameOpen && !CodeBinDecompressed;
 
     public bool IsGameOpen => Config != null;
     public bool IsIdle => !IsBusy;

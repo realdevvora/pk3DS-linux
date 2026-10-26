@@ -101,6 +101,18 @@ Fixes made while testing against a real Omega Ruby dump: rebuilt RomFS and ExeFS
 
 `pk3DS.WinForms` is still in the repository, untouched, but it is not part of the solution and no longer builds against Core. What was left out on purpose, and the remaining known issues, are listed in [docs/ui-deferred.md](docs/ui-deferred.md).
 
+## macOS app (this fork)
+
+`pk3DS.Mac` is a macOS app (Avalonia) on the same Core API as the CLI, laid out like the pk3DS window: RomFS, ExeFS, CRO and Output tabs, with File and Tools menus to open, extract and build a game, compress or decompress `code.bin`, update CRO hashes and restore the original files. Every table opens in a grid editor with the CLI's checks and spreadsheet export/import; game and story text have their own editor; randomize buttons sit in the editors they change. Opening a game backs up its original files to a `backup` folder next to the game folder, as pk3DS did.
+
+```
+pk3DS.Mac/build-app.sh                       # builds pk3DS.Mac/bin/app/pk3DS.app (self-contained, ad-hoc signed)
+open pk3DS.Mac/bin/app/pk3DS.app
+open pk3DS.Mac/bin/app/pk3DS.app --args <game folder>   # opens a game at launch
+```
+
+See [docs/ui-spec.md](docs/ui-spec.md) for the design.
+
 ## Building
 
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).

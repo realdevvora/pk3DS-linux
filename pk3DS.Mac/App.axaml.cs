@@ -16,8 +16,12 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var window = new MainWindow();
-            window.DataContext = new MainViewModel(new Dialogs(window));
+            var vm = new MainViewModel(new Dialogs(window));
+            window.DataContext = vm;
             desktop.MainWindow = window;
+            // A game folder given on the command line opens at launch.
+            if (desktop.Args is [{ } dir, ..] && System.IO.Directory.Exists(dir))
+                window.Opened += async (_, _) => await vm.Open(dir);
         }
         base.OnFrameworkInitializationCompleted();
     }

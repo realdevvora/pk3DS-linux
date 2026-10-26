@@ -1,6 +1,6 @@
 # Spec: macOS GUI
 
-Status: proposed, 2026-10-25. Follows [roadmap.md](roadmap.md), which is complete: every Gen 6 editor except move tutors and the image editors is in `pk3DS.Core` and exposed by the CLI.
+Status: implemented, 2026-10-26 (steps 1-6 of the order of work; step 7 is optional polish). Follows [roadmap.md](roadmap.md), which is complete: every Gen 6 editor except move tutors and the image editors is in `pk3DS.Core` and exposed by the CLI.
 
 ## Goal
 
