@@ -11,19 +11,21 @@ public static class GameBackup
     public const string baka = "a";
     public const string bakdll = "dll";
 
-    public static void BackupFiles(this GameConfig config, bool overwrite = false)
+    /// <param name="root">Folder that holds the backups; the relative <see cref="bakpath"/> folder if null</param>
+    public static void BackupFiles(this GameConfig config, bool overwrite = false, string root = null)
     {
+        root ??= bakpath;
         // Users may use pk3DS for multiple games, and even the same game but from different paths.
         // A simple way is to create a backup for each unique game, but... some carts may be pre-patched.
         // Just save the backup based on the folder name, as the user may move that parent folder.
         // Store a text file in each backup to keep track of its origin in case they rename the folder.
 
-        if (!Directory.Exists(bakpath))
-            Directory.CreateDirectory(bakpath);
+        if (!Directory.Exists(root))
+            Directory.CreateDirectory(root);
 
         var gamePath = new DirectoryInfo(config.RomFS).Parent;
         string gameFolder = gamePath.Name;
-        string gameBackup = Path.Combine(bakpath, gameFolder);
+        string gameBackup = Path.Combine(root, gameFolder);
         if (!Directory.Exists(gameBackup))
             Directory.CreateDirectory(gameBackup);
 
@@ -113,12 +115,14 @@ public static class GameBackup
         }
     }
 
-    public static string[] RestoreFiles(this GameConfig config)
+    /// <param name="root">Folder that holds the backups, as passed to <see cref="BackupFiles"/></param>
+    public static string[] RestoreFiles(this GameConfig config, string root = null)
     {
+        root ??= bakpath;
         // Do the same process as backing up, but copy files in the opposite direction.
 
         string gameFolder = new DirectoryInfo(config.RomFS).Parent.Name;
-        string gameBackup = Path.Combine(bakpath, gameFolder);
+        string gameBackup = Path.Combine(root, gameFolder);
         if (!Directory.Exists(gameBackup))
             return ["Unable to find the backup folder for this game.", $"Expected:\n{gameBackup}"];
 

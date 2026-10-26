@@ -64,6 +64,10 @@ How the changes were checked: the rebuilt RomFS and ExeFS, all 298 GARCs and all
 | `Mart6` | The mart editor's offsets, slot counts and location names lived in the form | In Core |
 | `CodeBin`, `TMHM6` | The TM/HM editor found and edited its table in `code.bin` inside the form | In Core |
 | TM/HM item descriptions | `TMHMEditor6` copied every TM/HM move's description into its item's description on close, rewriting the 44 retail descriptions worded differently from the move's (line breaks, commas). It only updated the text in memory | Only TMs/HMs whose move changed get the new description, and it is saved to the game text |
+| Temporary files of `RomFS.BuildRomFS` and `CTRUtil.BuildROM` | `tempRomFS.bin`, `romfs.bin` and `exefs.bin` were written to the working directory | Written next to the output file (`<out>.tmp`, `<out>.romfs.tmp`, `<out>.exefs.tmp`) and deleted as before, so a build works from any directory |
+| `GameBackup.BackupFiles` / `RestoreFiles` | Always used a `backup` folder in the working directory | Take an optional backup root; without one, the same `backup` folder |
+| `GameConfig.Open` | Game detection from the RomFS file count lived in `Main` (and in the CLI) | In Core |
+| `DataTableFile.Open` / `DataTableView` | - | Editors get the spreadsheet commands' columns, checks and save by row and column |
 | `GameConfig.EggMoves` and `InitializeEggMoves`, loaded by `InitializeAll` | Egg moves were only read inside the egg move editor | Loaded like the other tables |
 
 ## Behavior kept as upstream

@@ -33,7 +33,8 @@ public class RomFS
     // Build
     internal const int PADDING_ALIGN = 16;
     internal static string ROOT_DIR;
-    internal const string TempFile = "tempRomFS.bin";
+    // Built next to the output file, not in the working directory.
+    internal static string TempFile => OutFile + ".tmp";
     internal static string OutFile;
     internal const uint ROMFS_UNUSED_ENTRY = 0xFFFFFFFF;
 

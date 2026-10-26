@@ -51,7 +51,7 @@ Remaining work:
 
 What was fixed is listed in [differences-from-upstream.md](differences-from-upstream.md). Still open:
 
-- `RomFS` keeps `ROOT_DIR` / `OutFile` as statics and writes `tempRomFS.bin` and `romfs.bin` to the current directory while building, so builds are not reentrant and depend on the working directory.
+- `RomFS` keeps `ROOT_DIR` / `OutFile` as statics, so two builds cannot run at the same time. (Its temporary files now go next to the output file instead of the working directory.)
 - `BLZCoder` (19 calls), `FileFormat`, `GameBackup` and a few others write to `Console` directly instead of the progress sink.
 - One unchecked `Stream.Read` remains in `RomFS.MakeRomFSData`; it fills a buffer that is never used.
 - `pk3DS.WinForms/GarcUtil.cs` still uses the removed static GARC events, and every other WinForms call site still passes `ProgressBar` / `RichTextBox`; they need an `IProgressSink` adapter.

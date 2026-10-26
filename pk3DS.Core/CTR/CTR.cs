@@ -30,10 +30,11 @@ public static class CTRUtil
         // If ExeFS and RomFS are not built, build.
         bool exefsIsTemp = !File.Exists(EXEFS_PATH) && Directory.Exists(EXEFS_PATH);
         if (exefsIsTemp)
-            ExeFS.PackExeFS(SortedDirectory.GetFilePaths(EXEFS_PATH), EXEFS_PATH = "exefs.bin");
+            // Packed and built next to the output file, not in the working directory.
+            ExeFS.PackExeFS(SortedDirectory.GetFilePaths(EXEFS_PATH), EXEFS_PATH = SAVE_PATH + ".exefs.tmp");
         bool romfsIsTemp = !File.Exists(ROMFS_PATH) && Directory.Exists(ROMFS_PATH);
         if (romfsIsTemp)
-            RomFS.BuildRomFS(ROMFS_PATH, ROMFS_PATH = "romfs.bin", progress);
+            RomFS.BuildRomFS(ROMFS_PATH, ROMFS_PATH = SAVE_PATH + ".romfs.tmp", progress);
 
         NCCH NCCH;
         try
