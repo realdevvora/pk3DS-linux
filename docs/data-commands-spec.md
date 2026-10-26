@@ -151,6 +151,8 @@ Column names are the Core property names in snake case. Values are shown the way
 
 **typechart** (18 rows): `index type vs0 ... vs17`. Row N is attacking type N; `vsM` is its effectiveness against type M (the same order as the rows): 0, 2, 4 or 8, the values `TypeChart6` cycles through.
 
+**wild** (9,150 rows: 61 slots for each of the 150 maps with encounters): `index map location type slot species species_name form min_level max_level`. `index` is `map * 61 + slot`; `type` and `slot` name the slot (grass 1-12, tall grass 1-12, swarm 1-3, surf 1-5, rock smash 1-5, old/good/super rod 1-3, horde A/B/C 1-5). Maps without encounters have no rows, because pk3DS cannot add a table to a map, and an import that would leave a map with no encounters is refused (pk3DS advises against it). Each changed map's table is also written to the DexNav copy.
+
 ## Verification
 
 For each table, before it is committed:

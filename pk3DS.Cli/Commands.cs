@@ -202,6 +202,7 @@ public static class Commands
         .. DataCommands("gift", DataTable.Gift, "gift Pokémon, including the starters (DllField.cro)"),
         .. DataCommands("starter", DataTable.Starter, "the starter choices (DllPoke3Select.cro and their gifts in DllField.cro)"),
         .. DataCommands("typechart", DataTable.TypeChart, "the type effectiveness chart (DllBattle.cro)"),
+        .. DataCommands("wild", DataTable.Wild, "Omega Ruby / Alpha Sapphire wild encounters (one row per slot)"),
 
         new("shiny", "info", GameOptions.Synopsis, "Show the shiny rate patch in code.bin (needs a decompressed code.bin)",
             GameOptions.ValueOptions, a =>

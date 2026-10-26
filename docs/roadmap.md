@@ -45,8 +45,8 @@ Each task is one branch and one pull request, verified like the data tables (unc
 
 ### Phase 4: wild encounters
 
-13. **Move the ORAS wild encounter format into Core.** Parse and write `encdata` (zones, slots, DexNav data) as `RSWE` does, as its own structure class. No CLI yet. Verified by a byte-identical round trip of the whole GARC.
-14. **`wild dump` / `wild import`.** One row per zone and encounter type. In game: a route's grass encounters.
+13. **Move the ORAS wild encounter format into Core.** *(done)* Parse and write `encdata` (zones, slots, DexNav data) as `RSWE` does, as its own structure class. No CLI yet. Verified by a byte-identical round trip of the whole GARC.
+14. **`wild dump` / `wild import`.** *(done)* One row per zone and encounter type. In game: a route's grass encounters.
 
 ### Phase 5: randomizers
 

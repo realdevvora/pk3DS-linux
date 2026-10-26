@@ -179,6 +179,13 @@ public class GameConfig
         SuperMaisonPokemon = GetGARCData("maisonpkS").Files.Select(z => new Maison6.Pokemon(z)).ToArray();
     }
 
+    /// <summary>Loads the ORAS wild encounters, which <see cref="InitializeAll"/> does not (they are decompressed on load).</summary>
+    public void InitializeWildEncounters()
+    {
+        if (ORAS)
+            WildEncounters = new WildEncountersORAS(GetGARCData("encdata").Files);
+    }
+
     /// <summary>Loads the story text, which <see cref="InitializeAll"/> does not (the upstream story text editor read it on open).</summary>
     public void InitializeStoryText()
     {
@@ -383,6 +390,18 @@ public class GameConfig
         return changed;
     }
 
+    public int SaveWildEncounters()
+    {
+        var g = GetGARCData("encdata");
+        var (files, changed) = WildEncounters.Write();
+        if (changed == 0)
+            return 0;
+        g.Files = files;
+        g.Save();
+        InitializeWildEncounters();
+        return changed;
+    }
+
     public int SaveGameText() => SaveText(GARCGameText, GameTextStrings, RemapCharacters);
 
     public int SaveStoryText() => SaveText(GARCStoryText, StoryTextStrings, false);
@@ -526,6 +545,7 @@ public class GameConfig
     public Maison6.Pokemon[] MaisonPokemon { get; private set; }
     public Maison6.Trainer[] SuperMaisonTrainers { get; private set; }
     public Maison6.Pokemon[] SuperMaisonPokemon { get; private set; }
+    public WildEncountersORAS WildEncounters { get; private set; }
 
     public bool XY => Version == GameVersion.XY;
     public bool ORAS => Version is GameVersion.ORAS or GameVersion.ORASDEMO;

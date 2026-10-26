@@ -46,6 +46,8 @@ How the changes were checked: the rebuilt RomFS and ExeFS, all 298 GARCs and all
 | `GameConfig.Trainers`, `InitializeTrainers`, `SaveTrainers` (Gen 6) | Read and saved by `Main` around `RSTE`; every trainer opened in the editor was rewritten | In Core; only changed trainers are written. Entry 0, a placeholder RSTE never opened, is not loaded. Gen 7 trainers (`TrainerData7`) are not covered yet |
 | `GameConfig.MaisonTrainers` / `MaisonPokemon` / `SuperMaisonTrainers` / `SuperMaisonPokemon`, `InitializeMaison`, `SaveMaisonTrainers` / `SaveMaisonPokemon` (Gen 6) | Read and saved by `Main` around `MaisonEditor6` | In Core; only changed entries are written |
 | `CroFile`, `FieldEncounters6` | The static encounter and gift editors read and wrote `DllField.cro` at hardcoded offsets inside the forms | In Core, same offsets |
+| `WildEncountersORAS`, `GameConfig.WildEncounters` | `RSWE` unpacked the `encdata` GARC to a folder in the working directory and parsed it inside the form | In Core, in memory; only changed maps are recompressed |
+| ORAS wild encounter save | `RSWE` rewrote the table as 0x102 bytes, clearing the 14 bytes after the 61 slots (non-zero in 10 retail tables) | Only the 61 slots are written, to the map and to the DexNav copy |
 | `TypeEffectiveness6` | The type chart's offset lived in `TypeChart6`, next to the drawing code | The data part is in Core; drawing the chart stays with the deferred image code |
 | `Starters6` | The starter editor's offsets and gift mapping lived in the form | In Core |
 | Gift held item "none" | `GiftEditor6` showed the stored -1 as "(None)" and wrote 0 back for every gift opened | Written as -1, as the game stores it |

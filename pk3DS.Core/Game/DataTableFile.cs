@@ -31,6 +31,7 @@ public enum DataTable
     Gift,
     Starter,
     TypeChart,
+    Wild,
 }
 
 /// <summary>
@@ -186,6 +187,7 @@ public static class DataTableFile
             DataTable.Gift => GiftTable(config),
             DataTable.Starter => StarterTable(config),
             DataTable.TypeChart => TypeChartTable(config),
+            DataTable.Wild => WildTable(config),
             _ => throw new ArgumentOutOfRangeException(nameof(table)),
         };
     }
@@ -838,6 +840,45 @@ public static class DataTableFile
             return changed;
         }
         return new([.. columns], TypeEffectiveness6.TypeCount, _ => true, Save, () => { });
+    }
+
+    /// <summary>
+    /// The ORAS wild encounters: one row per slot of each map that has encounters. Row <c>map * 61 + slot</c>; maps without encounters
+    /// have no rows, because RSWE could not add a table to a map.
+    /// </summary>
+    private static Table WildTable(GameConfig config)
+    {
+        config.InitializeWildEncounters();
+        var w = config.WildEncounters;
+        int n = WildEncountersORAS.SlotCount;
+        string[] species = config.GetText(TextName.SpeciesNames);
+        string[] locations = config.GetText(TextName.metlist_000000);
+        var slotNames = WildEncountersORAS.SlotTypes.SelectMany(z => Enumerable.Range(1, z.Count).Select(k => (z.Type, Number: k))).ToArray();
+        WildEncountersORAS.Slot S(int i) => w.Tables[i / n][i % n];
+
+        // The fields RSWE edits per slot.
+        Column[] columns =
+        [
+            Index(),
+            Text("map", i => (i / n).ToString(Invariant)),
+            Text("location", i => locations[w.Locations[i / n]]),
+            Text("type", i => slotNames[i % n].Type),
+            Text("slot", i => slotNames[i % n].Number.ToString(Invariant)),
+            Number("species", i => S(i).Species, (i, v) => S(i).Species = v, 0, config.MaxSpeciesID),
+            Text("species_name", i => S(i).Species == 0 ? "" : species[S(i).Species]),
+            Number("form", i => S(i).Form, (i, v) => S(i).Form = v, 0, 0x1F),
+            Number("min_level", i => S(i).MinLevel, (i, v) => S(i).MinLevel = v, 0, 100),
+            Number("max_level", i => S(i).MaxLevel, (i, v) => S(i).MaxLevel = v, 0, 100),
+        ];
+        int Save()
+        {
+            // RSWE: "don't take away all encounters from a map that does have them."
+            int emptied = Array.FindIndex(w.Tables, t => t != null && t.All(s => s.Species == 0 && s.Form == 0 && s.MinLevel == 0 && s.MaxLevel == 0));
+            if (emptied >= 0)
+                throw new InvalidDataException($"map {emptied} would have no encounters left; pk3DS advises against removing every encounter from a map.");
+            return config.SaveWildEncounters();
+        }
+        return new(columns, w.Tables.Length * n, i => w.Tables[i / n] != null, Save, config.InitializeWildEncounters);
     }
 
     /// <summary>
