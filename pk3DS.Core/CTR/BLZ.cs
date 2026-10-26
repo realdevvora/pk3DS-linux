@@ -19,6 +19,7 @@
 /*----------------------------------------------------------------------------*/
 
 using System;
+using System.Text;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -49,6 +50,29 @@ public class BLZCoder
 
     private void SetProgressPosition(int pos) => progress?.Set(pos);
 
+    private readonly StringBuilder pending = new();
+
+    /// <summary>Messages go to the console as before, or one line at a time to the progress sink's log when there is one.</summary>
+    private void Write(string text)
+    {
+        if (progress == null)
+        {
+            Console.Write(text);
+            return;
+        }
+        pending.Append(text);
+        string s = pending.ToString();
+        int newline;
+        while ((newline = s.IndexOf('\n')) >= 0)
+        {
+            string line = s[..newline].TrimEnd('\r');
+            if (line.Length != 0)
+                progress.Log(line);
+            s = s[(newline + 1)..];
+        }
+        pending.Clear().Append(s);
+    }
+
     public BLZCoder(string[] args, IProgressSink progress = null)
     {
         int cmd, mode = 0;
@@ -73,11 +97,11 @@ public class BLZCoder
             cmd = CMD_ENCODE;
             mode = BLZ_BEST;
         }
-        else { Console.Write("Command not supported" + Environment.NewLine); return; }
+        else { Write("Command not supported" + Environment.NewLine); return; }
 
         if (args.Length < 2)
         {
-            Console.Write("Filename not specified" + Environment.NewLine);
+            Write("Filename not specified" + Environment.NewLine);
         }
         else
         {
@@ -96,41 +120,41 @@ public class BLZCoder
             }
         }
 
-        Console.Write(Environment.NewLine + "Done" + Environment.NewLine);
+        Write(Environment.NewLine + "Done" + Environment.NewLine);
     }
 
-    private static void Save(string filename, byte[] buffer, int length)
+    private void Save(string filename, byte[] buffer, int length)
     {
         Array.Resize(ref buffer, length);
         try
         { File.WriteAllBytes(filename, buffer); }
         catch (IOException e)
         {
-            Console.Write(Environment.NewLine + "File write error" + Environment.NewLine + e + Environment.NewLine);
+            Write(Environment.NewLine + "File write error" + Environment.NewLine + e + Environment.NewLine);
             File.WriteAllBytes("blz.bin", buffer);
-            Console.Write(Environment.NewLine + "Wrote to 'blz.bin' instead." + Environment.NewLine);
+            Write(Environment.NewLine + "Wrote to 'blz.bin' instead." + Environment.NewLine);
         }
     }
 
-    private static void BLZ_Decode(string filename)
+    private void BLZ_Decode(string filename)
     {
         try
         {
-            Console.Write($"- decoding '{filename}'");
+            Write($"- decoding '{filename}'");
             long startTime = DateTime.Now.Millisecond;
             byte[] buf = File.ReadAllBytes(filename);
             BLZResult result = BLZ_Decode(buf);
             if (result != null)
                 Save(filename, result.buffer, result.length);
-            Console.Write(" - done, time="
+            Write(" - done, time="
                           + (DateTime.Now.Millisecond - startTime) + "ms");
-            Console.Write(Environment.NewLine + "");
+            Write(Environment.NewLine + "");
         }
         catch (IOException e)
-        { Console.Write(Environment.NewLine + "File read error" + Environment.NewLine + e); }
+        { Write(Environment.NewLine + "File read error" + Environment.NewLine + e); }
     }
 
-    private static BLZResult BLZ_Decode(byte[] data)
+    private BLZResult BLZ_Decode(byte[] data)
     {
         int raw_len;
         int len;
@@ -143,7 +167,7 @@ public class BLZCoder
         int inc_len = BitConverter.ToInt32(pak_buffer, pak_len - 4);
         if (inc_len < 1)
         {
-            Console.Write(", WARNING: not coded file!");
+            Write(", WARNING: not coded file!");
             dec_len = pak_len;
             pak_len = 0;
             raw_len = dec_len;
@@ -152,18 +176,18 @@ public class BLZCoder
         {
             if (pak_len < 8)
             {
-                Console.Write(Environment.NewLine + "File has a bad header" + Environment.NewLine);
+                Write(Environment.NewLine + "File has a bad header" + Environment.NewLine);
                 return null;
             }
             int hdr_len = pak_buffer[pak_len - 5];
             if (hdr_len is < 8 or > 0xB)
             {
-                Console.Write(Environment.NewLine + "Bad header length" + Environment.NewLine);
+                Write(Environment.NewLine + "Bad header length" + Environment.NewLine);
                 return null;
             }
             if (pak_len <= hdr_len)
             {
-                Console.Write(Environment.NewLine + "Bad length" + Environment.NewLine);
+                Write(Environment.NewLine + "Bad length" + Environment.NewLine);
                 return null;
             }
             var enc_len = (int)(BitConverter.ToUInt32(pak_buffer, pak_len - 8) & 0x00FFFFFF);
@@ -172,7 +196,7 @@ public class BLZCoder
             raw_len = dec_len + enc_len + inc_len;
             if (raw_len > RAW_MAXIM)
             {
-                Console.Write(Environment.NewLine + "Bad decoded length" + Environment.NewLine);
+                Write(Environment.NewLine + "Bad decoded length" + Environment.NewLine);
                 return null;
             }
         }
@@ -219,7 +243,7 @@ public class BLZCoder
                 len = (pos >>> 12) + BLZ_THRESHOLD + 1;
                 if (raw + len > raw_end)
                 {
-                    Console.Write(", WARNING: wrong decoded length!");
+                    Write(", WARNING: wrong decoded length!");
                     len = raw_end - raw;
                 }
                 pos = (pos & 0xFFF) + 3;
@@ -236,7 +260,7 @@ public class BLZCoder
         raw_len = raw;
 
         if (raw != raw_end)
-            Console.Write(", WARNING: unexpected end of encoded file!");
+            Write(", WARNING: unexpected end of encoded file!");
 
         return new BLZResult(raw_buffer, raw_len);
     }
@@ -283,7 +307,7 @@ public class BLZCoder
     {
         try
         {
-            Console.Write("Now encoding {0}", filename);
+            Write($"Now encoding {filename}");
             var stopwatch = new Stopwatch();
             stopwatch.Start();
 
@@ -293,10 +317,10 @@ public class BLZCoder
                 Save(filename, result.buffer, result.length);
 
             stopwatch.Stop();
-            Console.Write(Environment.NewLine + "Done, time elapsed = " + stopwatch.ElapsedMilliseconds + "ms" + Environment.NewLine);
+            Write(Environment.NewLine + "Done, time elapsed = " + stopwatch.ElapsedMilliseconds + "ms" + Environment.NewLine);
         }
         catch (IOException e)
-        { Console.Write(Environment.NewLine + "File read error" + Environment.NewLine + e + Environment.NewLine); }
+        { Write(Environment.NewLine + "File read error" + Environment.NewLine + e + Environment.NewLine); }
     }
 
     private byte[] BLZ_Code(byte[] raw_buffer, int raw_len, int best)

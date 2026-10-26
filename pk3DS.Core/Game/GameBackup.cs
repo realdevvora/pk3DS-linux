@@ -12,7 +12,7 @@ public static class GameBackup
     public const string bakdll = "dll";
 
     /// <param name="root">Folder that holds the backups; the relative <see cref="bakpath"/> folder if null</param>
-    public static void BackupFiles(this GameConfig config, bool overwrite = false, string root = null)
+    public static void BackupFiles(this GameConfig config, bool overwrite = false, string root = null, IProgressSink progress = null)
     {
         root ??= bakpath;
         // Users may use pk3DS for multiple games, and even the same game but from different paths.
@@ -116,7 +116,7 @@ public static class GameBackup
     }
 
     /// <param name="root">Folder that holds the backups, as passed to <see cref="BackupFiles"/></param>
-    public static string[] RestoreFiles(this GameConfig config, string root = null)
+    public static string[] RestoreFiles(this GameConfig config, string root = null, IProgressSink progress = null)
     {
         root ??= bakpath;
         // Do the same process as backing up, but copy files in the opposite direction.
@@ -134,11 +134,11 @@ public static class GameBackup
 
         // restore exefs
         if (Directory.Exists(bak_exefs))
-            count[0] = RestoreExeFS(config, bak_exefs);
+            count[0] = RestoreExeFS(config, bak_exefs, progress);
         if (Directory.Exists(bak_a))
-            count[1] = RestoreGARC(config, bak_a);
+            count[1] = RestoreGARC(config, bak_a, progress);
         if (Directory.Exists(bak_dll))
-            count[2] = RestoreDLL(config, bak_dll);
+            count[2] = RestoreDLL(config, bak_dll, progress);
 
         string[] sources = ["ExeFS", "'a'", "CRO"];
         var info = count.Select((c, i) => $"{sources[i]}: {c}");
@@ -146,7 +146,7 @@ public static class GameBackup
         return [result];
     }
 
-    private static int RestoreExeFS(GameConfig config, string bak_exefs)
+    private static int RestoreExeFS(GameConfig config, string bak_exefs, IProgressSink progress)
     {
         int count = 0;
         var files = Directory.GetFiles(config.ExeFS);
@@ -156,17 +156,17 @@ public static class GameBackup
             if (File.Exists(dest))
             {
                 try { File.Copy(dest, src, overwrite: true); count++; }
-                catch { Console.WriteLine("Unable to overwrite backup: " + dest); }
+                catch { Log(progress, "Unable to overwrite backup: " + dest); }
             }
             else
             {
-                Console.WriteLine("Unable to find backup: " + dest);
+                Log(progress, "Unable to find backup: " + dest);
             }
         }
         return count;
     }
 
-    private static int RestoreGARC(GameConfig config, string bak_a)
+    private static int RestoreGARC(GameConfig config, string bak_a, IProgressSink progress)
     {
         int count = 0;
         var files = config.Files.Select(file => file.Name);
@@ -179,17 +179,17 @@ public static class GameBackup
             if (File.Exists(dest))
             {
                 try { File.Copy(dest, src, overwrite: true); count++; }
-                catch { Console.WriteLine("Unable to overwrite backup: " + dest); }
+                catch { Log(progress, "Unable to overwrite backup: " + dest); }
             }
             else
             {
-                Console.WriteLine("Unable to find backup: " + dest);
+                Log(progress, "Unable to find backup: " + dest);
             }
         }
         return count;
     }
 
-    private static int RestoreDLL(GameConfig config, string bak_dll)
+    private static int RestoreDLL(GameConfig config, string bak_dll, IProgressSink progress)
     {
         int count = 0;
 
@@ -210,11 +210,11 @@ public static class GameBackup
             if (File.Exists(dest))
             {
                 try { File.Copy(dest, src, overwrite: true); count++; }
-                catch { Console.WriteLine("Unable to overwrite backup: " + dest); }
+                catch { Log(progress, "Unable to overwrite backup: " + dest); }
             }
             else
             {
-                Console.WriteLine("Unable to find backup: " + dest);
+                Log(progress, "Unable to find backup: " + dest);
             }
         }
 
@@ -233,9 +233,18 @@ public static class GameBackup
             }
             else
             {
-                Console.WriteLine("Unable to find backup: " + dest);
+                Log(progress, "Unable to find backup: " + dest);
             }
         }
         return count;
+    }
+
+    // Messages went to the console; with a progress sink they go to its log.
+    private static void Log(IProgressSink progress, string message)
+    {
+        if (progress == null)
+            Console.WriteLine(message);
+        else
+            progress.Log(message);
     }
 }
